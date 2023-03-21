@@ -6,6 +6,7 @@
 //commands
 const char* EXIT = "exit";
 const char* CREATE_USER = "create-user";
+const char* REMOVE_USER = "remove-user";
 
 
 //def values
@@ -262,7 +263,8 @@ void createUser(const char* commandTo) {
 
 
         std::fstream binary2;
-        binary2.open("users.bin", std::ios::binary | std::ios::app );
+        //TODO check if works with std::ios::in | std::ios::out
+        binary2.open("users.bin", std::ios::binary | std::ios::app | std::ios::in | std::ios::out);
         //TODO if file broken to make it do smth OK
         if (!binary2.is_open()) {
             std::cout << "Open error" << '\n';
@@ -296,10 +298,42 @@ void createUser(const char* commandTo) {
 
 }
 
+void removeUser(const char* userToRemove) {
+    //TODO if try to remove admin
+    std::fstream binary("users.bin", std::ios::binary | std::ios::in | std::ios::out);
+    User user;
+
+    binary.seekg(0, std::ios::beg);
+
+    binary.read((char*)&user, sizeof(User));
+
+    while (!strCompare(user.name, userToRemove)) {
+        binary.read((char*)&user, sizeof(User));
+    }
+
+    user.id = 1; // = 1 => user is deleted and from now he is gonna be ignored
+    binary.write((const char*)&user, sizeof(User));
+    binary.read((char*)&user, sizeof(User));
+
+    //TODO transfer all the money to admin
+
+
+    if (user.id  == 1) {
+        std::cout << '\n' << "Sucsessfully removed";
+    }
+    else {
+        std::cout << '\n' << "Smth went wrong";
+    }
+    binary.close();
+}
+
 void runCommand(char* commandFor, char* commandTo) {
 
     if (strCompare(commandFor, CREATE_USER)) {
         createUser(commandTo);
+    }
+    else if (strCompare(commandFor, REMOVE_USER)) {
+        removeUser(commandTo);
     }
 }
 
@@ -312,7 +346,7 @@ void run() {
         std::cin.getline(enteredCommand, 64);
 
         char commandFor[32];
-        char commandTo[64];
+        char  commandTo[64];
 
         commandSeperator(enteredCommand, commandFor, commandTo);
         runCommand(commandFor, commandTo);
