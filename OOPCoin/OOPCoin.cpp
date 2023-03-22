@@ -11,7 +11,7 @@ const char* REMOVE_USER = "remove-user";
 
 //def values
 const char* ADMIN = "admin";
-int DEFAULT_AMOUNT_TRANSACTION = 1500;
+double DEFAULT_AMOUNT_TRANSACTION = 1500;
 unsigned ADMIN_ID = 0;
 
 using namespace std::chrono;
@@ -49,7 +49,8 @@ struct TransactionBlock {
     unsigned prevBlockId;
     unsigned prevBlockHash;
     int validTransactions;
-    Transaction transactions[16];
+    //TODO 3 za udobstvo no trqbva da sa 16
+    Transaction transactions[3];
 };
 
 long long secondsSince1970() {
@@ -152,6 +153,53 @@ void stringCopy(const char* fromStr, char* toStr) {
     toStr[i] = '\0';
 }
 
+bool checkIfBlockFull(std::fstream& stream) {
+
+    std::streampos pos = stream.tellp();
+  
+    stream.seekg(-static_cast<int>(sizeof(TransactionBlock)), std::ios::end);
+
+    TransactionBlock block;
+
+    stream.read((char*)&block, sizeof(TransactionBlock));
+
+    std::cout << '\n' << "Last block values: " << block.id << '\n';
+
+    if (block.transactions[2].receiver) {
+        
+    }
+    return 1;
+}
+
+void mentionTransaction(Transaction& transaction, bool fileExists) {
+
+    std::ofstream binary;
+
+
+    if (fileExists) {
+        binary.open("transactions.bin", std::ios::binary | std::ios::app | std::ios::out | std::ios::in);
+        if (!binary.is_open()) {
+            std::cout << "Transaction file open error!!! ";
+        }
+        binary.write((const char*)&transaction, sizeof(Transaction));
+        std::cout << "Saved a rtansaction with a reciver id = " << transaction.receiver;
+
+    }
+    else {
+        binary.open("transactions.bin", std::ios::binary | std::ios::trunc | std::ios::out | std::ios::in);
+        if (!binary.is_open()) {
+            std::cout << "Transaction file open error!!! ";
+        }
+        binary.write((const char*)&transaction, sizeof(Transaction));
+        std::cout << "Saved a rtansaction with a reciver id = " << transaction.receiver;
+
+    }
+
+
+    binary.close();
+
+}
+
 void createTransaction(const unsigned from,const unsigned to, const int amount) {
 
     //TODO make it ifstream whe possible and change the file to .dat
@@ -168,12 +216,23 @@ void createTransaction(const unsigned from,const unsigned to, const int amount) 
             std::cout << "Cant create the file!!" << '\n';
         }
 
-        Transaction transaction{to, from, amount, secondsSince1970()};
+        Transaction transaction{ to, from, amount, secondsSince1970() };
 
-        std::cout << "Congrats, now you have " << transaction.coins << " to start trading!!!" << '\n';
-        binary.write((const char*)&transaction, sizeof(Transaction));
+        mentionTransaction(transaction, false);
 
-        std::cout << "Sender: " << transaction.sender << '\n' << "Reciver: " << transaction.receiver << '\n' << "Amount: " << transaction.coins << '\n';
+        TransactionBlock block;
+        block.id = randomSixDigitGenerator();
+
+        std::cout << '\n' << "created block with ID: " << block.id << '\n';
+
+        block.prevBlockId = 0;
+        block.prevBlockHash = 0;
+        block.validTransactions = 0;
+        block.transactions[0] = transaction;
+        
+
+        std::cout << "Now " << block.transactions[0].receiver << " has " << amount << " to trade!" << '\n';
+        binary.write((const char*)&block, sizeof(block));
 
         binary.close();
     }
@@ -186,14 +245,15 @@ void createTransaction(const unsigned from,const unsigned to, const int amount) 
         binary.close();
 
         std::fstream binary2;
-        binary2.open("blocks.bin", std::ios::binary | std::ios::app);
+        binary2.open("blocks.bin", std::ios::binary | std::ios::app | std::ios::in | std::ios::out);
 
         Transaction transaction{ to, from, amount, secondsSince1970() };
 
-        std::cout << "Congrats, now you have " << transaction.coins << " to start trading!!!" << '\n';
-        binary2.write((const char*)(& transaction), sizeof(Transaction));
+        mentionTransaction(transaction, true);
 
-        std::cout << "Sender: " << transaction.sender << '\n' << "Reciver: " << transaction.receiver << '\n' << "Amount: " << transaction.coins << '\n';
+        TransactionBlock block;
+
+        binary2.write((const char*)(&block), sizeof(block));
 
         binary2.close();
     }
@@ -280,18 +340,16 @@ void createUser(const char* commandTo) {
         //binary.seekg(binary.eof());
         binary2.write((const char*)(&user), sizeof(user));
 
+        std::cout << "Createed user name from file: " << user.name << " " << "User id: " << user.id << '\n';
         createTransaction(ADMIN_ID, user.id, DEFAULT_AMOUNT_TRANSACTION);
 
 
 
-        binary2.read((char*)&user, sizeof(User));
+        //binary2.read((char*)&user, sizeof(User));
 
+        //binary2.read((char*)&user, sizeof(User));
 
-        std::cout << "Createed user name from file: " << user.name << " " << "User id: " << user.id << '\n';
-
-        binary2.read((char*)&user, sizeof(User));
-
-        std::cout << "User name from file: " << user.name << " " << "User id: " << user.id << '\n';
+        //std::cout << "User name from file: " << user.name << " " << "User id: " << user.id << '\n';
 
         binary2.close();
     }
@@ -358,6 +416,7 @@ void run() {
 int main() {
     
     run();
+
 
     return 0;
 
