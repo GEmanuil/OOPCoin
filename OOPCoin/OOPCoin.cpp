@@ -153,22 +153,25 @@ void stringCopy(const char* fromStr, char* toStr) {
     toStr[i] = '\0';
 }
 
-bool checkIfBlockFull(std::fstream& stream) {
+short giveBlockTransactionArrIndex() {
 
-    std::streampos pos = stream.tellp();
-  
-    stream.seekg(-static_cast<int>(sizeof(TransactionBlock)), std::ios::end);
+    std::ifstream binary;
 
-    TransactionBlock block;
+    binary.open("transactions.bin", std::ios::binary | std::ios::in);
 
-    stream.read((char*)&block, sizeof(TransactionBlock));
+    binary.seekg(binary.beg);
 
-    std::cout << '\n' << "Last block values: " << block.id << '\n';
+    int transactionCounter = 0;
 
-    if (block.transactions[2].receiver) {
-        
+    Transaction transaction;
+
+    while (binary.read((char*)&transaction, sizeof(Transaction))) {
+        transactionCounter++;
     }
-    return 1;
+
+    binary.close();
+
+    return transactionCounter % 3 - 1;
 }
 
 void mentionTransaction(Transaction& transaction, bool fileExists) {
@@ -194,7 +197,7 @@ void mentionTransaction(Transaction& transaction, bool fileExists) {
         std::cout << "Saved a rtansaction with a reciver id = " << transaction.receiver;
 
     }
-
+     
 
     binary.close();
 
@@ -247,13 +250,30 @@ void createTransaction(const unsigned from,const unsigned to, const int amount) 
         std::fstream binary2;
         binary2.open("blocks.bin", std::ios::binary | std::ios::app | std::ios::in | std::ios::out);
 
+        if (!binary2.is_open()) {
+            std::cout << "Open error" << '\n';
+        }
+
         Transaction transaction{ to, from, amount, secondsSince1970() };
-
         mentionTransaction(transaction, true);
-
         TransactionBlock block;
 
-        binary2.write((const char*)(&block), sizeof(block));
+        if (giveBlockTransactionArrIndex() == 0) {
+            binary2.seekg(binary2.eof());
+
+            block.id = randomSixDigitGenerator();
+            block.transactions[0] = transaction;
+            
+            //TODO new block
+
+
+            binary2.write((const char*)(&block), sizeof(block));
+        }
+        else {
+            binary2.read((char*)(&block), sizeof(block));
+            block.transactions[giveBlockTransactionArrIndex()] = transaction;
+        }
+
 
         binary2.close();
     }
