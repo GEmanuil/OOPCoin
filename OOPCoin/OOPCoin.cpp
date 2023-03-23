@@ -7,6 +7,7 @@
 const char* EXIT = "exit";
 const char* CREATE_USER = "create-user";
 const char* REMOVE_USER = "remove-user";
+const char* SEND_COINS = "send-coins";
 
 
 //def values
@@ -16,6 +17,12 @@ unsigned ADMIN_ID = 0;
 const unsigned numOfTransactionInBlock = 3;
 
 using namespace std::chrono;
+
+long long secondsSince1970();
+int randomSixDigitGenerator();
+void commandSeperator(const char* enteredCommand, char* commandFor, char* commandTo);
+bool strCompare(const char* arr1, const char* arr2);
+
 
 unsigned computeHash(const unsigned char* memory, int length) {
     unsigned hash = 0xbeaf;
@@ -118,6 +125,9 @@ int randomSixDigitGenerator() {
 
 void commandSeperator(const char* enteredCommand, char* commandFor, char* commandTo) {
 
+    if (strCompare(enteredCommand, EXIT)) {
+        return;
+    }
     size_t index = 0;
 
     for (index; enteredCommand[index] != ' '; ++index) {
@@ -282,12 +292,14 @@ void createTransaction(const unsigned from,const unsigned to, const int amount) 
 
             binary2.write((const char*)(&block), sizeof(block));
 
+            std::cout << "\n" << "PrevBlock HASH: " << block.prevBlockHash << '\n';
+
+
             std::cout << "\n" << "Transactions in a block: " << block.transactions[0].receiver << " " << block.transactions[1].receiver << " " << block.transactions[2].receiver << '\n';
 
         }
         else {
 
-            //TODO IDKKK
             binary2.seekg(binary2.tellg() - static_cast<std::streampos>(sizeof(TransactionBlock)));
             binary2.read((char*)(&block), sizeof(block));
 
@@ -411,33 +423,146 @@ void createUser(const char* commandTo) {
 }
 
 void removeUser(const char* userToRemove) {
-    //TODO if try to remove admin
     std::fstream binary("users.bin", std::ios::binary | std::ios::in | std::ios::out);
     User user;
 
-    binary.seekg(0, std::ios::beg);
-
-    binary.read((char*)&user, sizeof(User));
-
-    while (!strCompare(user.name, userToRemove)) {
-        binary.read((char*)&user, sizeof(User));
+    while (binary.read((char*)&user, sizeof(User))) {
+        if (strCompare(user.name, userToRemove)) {
+            break;
+        }
     }
 
+    if (user.id == 0) {
+        std::cout << "YOU CAN'T REMOVE THE SYS_USER!!!" << '\n';
+        return;
+    }
+    if (user.id == 1) {
+        std::cout << "User already deleted!!!" << '\n';
+        return;
+    }
+    std::cout << "REMOVED User with a name: " << user.name << "\n" << "User id: " << user.id << '\n';
+
     user.id = 1; // = 1 => user is deleted and from now he is gonna be ignored
+
+    binary.seekg(binary.tellg() - static_cast<std::streampos>(sizeof(User)));
+    //binary.seekp(binary.tellp() - static_cast<std::streampos>(sizeof(User)));
+
     binary.write((const char*)&user, sizeof(User));
+    binary.seekp(binary.tellp() - static_cast<std::streampos>(sizeof(User)));
     binary.read((char*)&user, sizeof(User));
 
     //TODO transfer all the money to admin
 
-    std::cout << "REMOVED User with a name: " << user.name << "\n" << "User id: " << user.id << '\n';
 
     if (user.id  == 1) {
         std::cout << "Sucsessfully removed" << '\n';
     }
     else {
-        std::cout << '\n' << "Smth went wrong with removing the user";
+        std::cout << '\n' << "Smth went wrong with removing the user" << '\n';
     }
     binary.close();
+}
+
+void seperateSenderFromReciever(const char* sendFromTo, char* from, char* to) {
+    int i;
+    int secIndex = 0;
+    for ( i = 0; sendFromTo[i] != ' '; i++) {
+        from[i] = sendFromTo[i];
+    }
+    from[i] = '\0';
+    i++;
+    for (i; sendFromTo[i] != '\0'; secIndex++, i++) {
+        to[secIndex] = sendFromTo[i];
+    }
+    to[secIndex] = '\0';
+}
+
+bool checkIfUserExists(char* userName) {
+    std::ifstream binary;
+    binary.open("users.bin", std::ios::binary);
+
+    User user;
+
+    while (binary.read((char*)&user, sizeof(User))) {
+        
+        if (strCompare(user.name, userName) && user.id != 1) {
+            return true;
+        }
+    }
+
+    std::cout << "User " << user.name << " doesn't exist" << '\n';
+    binary.close();
+    return false;
+}
+
+int getUserId(const char* userName) {
+
+    std::ifstream stream;
+    stream.open("users.bin", std::ios::binary);
+    if (!stream.is_open()) {
+        std::cout << "File error!!!";
+    }
+
+    User user;
+    while (stream.read((char*)&user, sizeof(User))) {
+        if (strCompare(user.name, userName)) {
+            stream.close();
+            return user.id;
+        }
+    }
+    std::cout << '\n' << "SMth went wrong with getting the ID of a user!!" << '\n';
+    stream.close();
+
+    return -1;
+}
+
+double checkUserAmount(const char* userName) {
+
+    int userID = getUserId(userName);
+
+    std::ifstream stream;
+    stream.open("transactions.bin", std::ios::binary);
+    if (!stream.is_open()) {
+        std::cout << "File error!!!";
+    }
+
+    Transaction transaction;
+    double userAmount = 0;
+    while (stream.read((char*)&transaction, sizeof(Transaction))) {
+        if (transaction.receiver == userID) {
+            userAmount += transaction.coins;
+        }
+        else if (transaction.sender == userID) {
+            userAmount -= transaction.coins;
+        }
+    }
+    stream.close();
+    return userAmount;
+}
+
+void sendCoins(const char* sendFromTO) {
+    char coinsFrom[64];
+    char coinsTo[64];
+
+    double amount;
+    std::cout << '\n' << "Amount: ";
+    std::cin >> amount;
+    std::cout << '\n';
+
+    seperateSenderFromReciever(sendFromTO, coinsFrom, coinsTo);
+    if (!checkIfUserExists(coinsFrom) || !checkIfUserExists(coinsTo)) {
+        return;
+    }
+
+    double senderAmount = checkUserAmount(coinsFrom);
+
+    if (senderAmount < amount) {
+        std::cout << "Sender has only " << senderAmount << " OOPCoins which are not enogh!!!";
+        return;
+    }
+
+    createTransaction(getUserId(coinsFrom), getUserId(coinsTo), amount);
+    
 }
 
 void runCommand(char* commandFor, char* commandTo) {
@@ -447,6 +572,9 @@ void runCommand(char* commandFor, char* commandTo) {
     }
     else if (strCompare(commandFor, REMOVE_USER)) {
         removeUser(commandTo);
+    }
+    else if (strCompare(commandFor, SEND_COINS)) {
+        sendCoins(commandTo);
     }
 }
 
@@ -465,14 +593,11 @@ void run() {
         runCommand(commandFor, commandTo);
 
     }
-
 }
 
 int main() {
     
     run();
 
-
     return 0;
-
 }
