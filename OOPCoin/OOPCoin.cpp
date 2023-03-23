@@ -260,7 +260,7 @@ void createTransaction(const unsigned from,const unsigned to, const int amount) 
         binary.close();
 
         std::fstream binary2;
-        binary2.open("blocks.bin", std::ios::binary /*| std::ios::app*/ | std::ios::in | std::ios::out);
+        binary2.open("blocks.bin", std::ios::binary | std::ios::app | std::ios::in | std::ios::out);
 
         if (!binary2.is_open()) {
             std::cout << "Open error" << '\n';
@@ -284,6 +284,8 @@ void createTransaction(const unsigned from,const unsigned to, const int amount) 
             binary2.write((const char*)(&block), sizeof(block));
         }
         else {
+
+            //TODO IDKKK
             binary2.seekg(binary2.tellg() - static_cast<std::streampos>(sizeof(TransactionBlock)));
             binary2.read((char*)(&block), sizeof(block));
 
