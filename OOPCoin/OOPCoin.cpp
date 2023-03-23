@@ -180,7 +180,7 @@ void mentionTransaction(Transaction& transaction, bool fileExists) {
 
 
     if (fileExists) {
-        binary.open("transactions.bin", std::ios::binary | std::ios::app | std::ios::out | std::ios::in);
+        binary.open("transactions.bin", std::ios::binary | std::ios::app | std::ios::out);
         if (!binary.is_open()) {
             std::cout << "Transaction file open error!!! ";
         }
@@ -189,7 +189,7 @@ void mentionTransaction(Transaction& transaction, bool fileExists) {
 
     }
     else {
-        binary.open("transactions.bin", std::ios::binary | std::ios::trunc | std::ios::out | std::ios::in);
+        binary.open("transactions.bin", std::ios::binary | std::ios::trunc | std::ios::out);
         if (!binary.is_open()) {
             std::cout << "Transaction file open error!!! ";
         }
@@ -197,10 +197,22 @@ void mentionTransaction(Transaction& transaction, bool fileExists) {
         std::cout << "Saved a rtansaction with a reciver id = " << transaction.receiver;
 
     }
-     
-
+ 
     binary.close();
 
+}
+
+TransactionBlock givePrevTransBlock(std::fstream stream) {
+    TransactionBlock result;
+
+    std::streampos notChangedPosition = stream.tellg();
+
+    stream.seekg(0, std::ios::end);
+    stream.seekg(stream.tellg() - static_cast<std::streampos>(sizeof(TransactionBlock)));
+    stream.read(reinterpret_cast<char*>(&result), sizeof(TransactionBlock));
+
+    stream.seekg(notChangedPosition);
+    return result;
 }
 
 void createTransaction(const unsigned from,const unsigned to, const int amount) {
@@ -248,7 +260,7 @@ void createTransaction(const unsigned from,const unsigned to, const int amount) 
         binary.close();
 
         std::fstream binary2;
-        binary2.open("blocks.bin", std::ios::binary | std::ios::app | std::ios::in | std::ios::out);
+        binary2.open("blocks.bin", std::ios::binary /*| std::ios::app*/ | std::ios::in | std::ios::out);
 
         if (!binary2.is_open()) {
             std::cout << "Open error" << '\n';
@@ -261,19 +273,38 @@ void createTransaction(const unsigned from,const unsigned to, const int amount) 
         if (giveBlockTransactionArrIndex() == 0) {
             binary2.seekg(binary2.eof());
 
+            //TODO new block
             block.id = randomSixDigitGenerator();
             block.transactions[0] = transaction;
             
-            //TODO new block
-
+            TransactionBlock lastBlock;
+            block.prevBlockHash = computeHash((const unsigned char*)(&lastBlock), sizeof(lastBlock));
+            block.prevBlockId - lastBlock.id;
 
             binary2.write((const char*)(&block), sizeof(block));
         }
         else {
+            binary2.seekg(binary2.tellg() - static_cast<std::streampos>(sizeof(TransactionBlock)));
             binary2.read((char*)(&block), sizeof(block));
-            block.transactions[giveBlockTransactionArrIndex()] = transaction;
+
+            std::cout << "\n" << "Need to be smth meaningfull 1: " << block.transactions[1].receiver << '\n';
+
+
+            block.transactions[giveBlockTransactionArrIndex() + 1] = transaction;
+
+            binary2.seekp(binary2.tellp() - static_cast<std::streampos>(sizeof(TransactionBlock)));
+
+
+            binary2.write((char*)(&block), sizeof(block));
         }
 
+
+        //checking if the block correct
+        binary2.read((char*)(&block), sizeof(block));
+        binary2.seekg(binary2.tellg() - static_cast<std::streampos>(sizeof(TransactionBlock)));
+
+
+        std::cout << "\n" << "Need to be smth meaningfull 2: " << block.transactions[2].receiver << '\n';
 
         binary2.close();
     }
