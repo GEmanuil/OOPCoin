@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <cstring>
 #include <chrono>
 #include <time.h>
 
@@ -8,6 +9,8 @@ const char* EXIT = "exit";
 const char* CREATE_USER = "create-user";
 const char* REMOVE_USER = "remove-user";
 const char* SEND_COINS = "send-coins";
+const char* VERIFY_TRANSACTIONS = "verify-transactions";
+
 
 
 //def values
@@ -22,6 +25,7 @@ long long secondsSince1970();
 int randomSixDigitGenerator();
 void commandSeperator(const char* enteredCommand, char* commandFor, char* commandTo);
 bool strCompare(const char* arr1, const char* arr2);
+void stringCopy(const char* fromStr, char* toStr);
 
 
 unsigned computeHash(const unsigned char* memory, int length) {
@@ -126,6 +130,10 @@ int randomSixDigitGenerator() {
 void commandSeperator(const char* enteredCommand, char* commandFor, char* commandTo) {
 
     if (strCompare(enteredCommand, EXIT)) {
+        return;
+    }
+    if (strCompare(enteredCommand, VERIFY_TRANSACTIONS)) {
+        stringCopy(VERIFY_TRANSACTIONS, commandFor);
         return;
     }
     size_t index = 0;
@@ -287,8 +295,17 @@ void createTransaction(const unsigned from,const unsigned to, const int amount) 
             block.transactions[0] = transaction;
             
             TransactionBlock lastBlock;
+
+            binary2.seekg(0, std::ios::end);
+            binary2.seekg(binary2.tellg() - static_cast<std::streampos>(sizeof(TransactionBlock)));
+
+            binary2.read((char*)(&lastBlock), sizeof(TransactionBlock));
+
             block.prevBlockHash = computeHash((const unsigned char*)(&lastBlock), sizeof(lastBlock));
-            block.prevBlockId - lastBlock.id;
+
+            std::cout << '\n' << "Previous block hash:  " << block.prevBlockHash << "\n";
+
+            block.prevBlockId = lastBlock.id;
 
             binary2.write((const char*)(&block), sizeof(block));
 
@@ -557,12 +574,45 @@ void sendCoins(const char* sendFromTO) {
     double senderAmount = checkUserAmount(coinsFrom);
 
     if (senderAmount < amount) {
-        std::cout << "Sender has only " << senderAmount << " OOPCoins which are not enogh!!!";
+        std::cout << "Sender has only " << senderAmount << " OOPCoins which are not enogh!!!" << '\n';
         return;
     }
 
     createTransaction(getUserId(coinsFrom), getUserId(coinsTo), amount);
     
+}
+
+void checkTransactions() {
+    std::ifstream binary;
+
+    binary.open("blocks.bin");
+
+    if (!binary.is_open()) {
+        std::cout << "Open error of blocks.bin file!!!" << '\n';
+    }
+
+    TransactionBlock block;
+
+    //read the first block with no prevHassh
+    binary.read((char*)&block, sizeof(TransactionBlock));
+
+    unsigned prevBlockHash = computeHash((const unsigned char*)(&block), sizeof(block));
+    unsigned hash;
+
+    while (binary.read((char*)&block, sizeof(TransactionBlock))) {
+
+        hash = block.prevBlockHash;
+
+        if (prevBlockHash != hash) {
+            std::cout << '\n' << "Transaction fault. There is a corupted transaction!!!" << '\n';
+            binary.close();
+            return;
+        }
+        prevBlockHash = computeHash((const unsigned char*)(&block), sizeof(block));
+    }
+
+    std::cout << '\n' << "All transactions have connection!!!" << '\n';
+    binary.close();
 }
 
 void runCommand(char* commandFor, char* commandTo) {
@@ -575,6 +625,9 @@ void runCommand(char* commandFor, char* commandTo) {
     }
     else if (strCompare(commandFor, SEND_COINS)) {
         sendCoins(commandTo);
+    }
+    else if (strCompare(commandFor, VERIFY_TRANSACTIONS)) {
+        checkTransactions();
     }
 }
 
