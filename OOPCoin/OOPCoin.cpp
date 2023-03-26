@@ -803,16 +803,25 @@ short computeBlockArrSize(int blockCounter) {
     int blockSize = 0;
 
 
-    for (size_t i = 0; binary.read((char*)&transaction, sizeof(Transaction)) ; i++)
+    if (blockCounter == 1)
     {
-        if (i == ((blockCounter - 1) * numOfTransactionInBlock) && blockCounter != 1) {
-            blockSize = 0;
+        while (binary.read((char*)&transaction, sizeof(Transaction)) && blockSize < numOfTransactionInBlock) {
+            ++blockSize;
         }
-        blockSize++;
+    }
+
+    else {
+
+        binary.seekg((blockCounter - 1) * numOfTransactionInBlock * sizeof(Transaction));
+        while (binary.read((char*)&transaction, sizeof(Transaction)) && blockSize < numOfTransactionInBlock) {
+            ++blockSize;
+        }
+        
+
     }
 
     binary.close();
-    return blockSize % numOfTransactionInBlock;
+    return blockSize;
 }
 
 short giveBlockTransactionArrIndex(int blockID) {
@@ -836,7 +845,7 @@ short giveBlockTransactionArrIndex(int blockID) {
             binary.close();
             blockCounter++;
 
-            return computeBlockArrSize(blockCounter) - 1;
+            return computeBlockArrSize(blockCounter);
         }
         blockCounter++;
     }
@@ -880,19 +889,23 @@ void sortBlocks(int blocks[1024], int length) {
     for (int i = 0; i < length; i++) {
         for (int j = i; j < length; j++)
         {
-
-            if (checkBlockAmount(blocks[j]) > checkBlockAmount(blocks[i])) {
+            blockAmount1 = checkBlockAmount(blocks[j]);
+            blockAmount2 = checkBlockAmount(blocks[i]);
+            if (blockAmount1 > blockAmount2) {
                 temp = blocks[j];
                 blocks[j] = blocks[i];
                 blocks[i] = temp;
             }
         }
+
+        std::cout << '\n' << i + 1 << ". Block id: " << blocks[i] << ", with amount: " << checkBlockAmount(blocks[i]) << '\n';
+
     }
 }
 
 void computeBiggestBlocks() {
     int numBlocks;
-    std::cout << '\n' << "Enter how big of a list of wealthiest users you want: ";
+    std::cout << '\n' << "Enter how big of a list of blocks you want: ";
 
     std::cin >> numBlocks;
 
@@ -925,10 +938,7 @@ void computeBiggestBlocks() {
 
     //TODO in a function
     //print wealthiest users
-    char userNamse[32];
-    for (size_t i = 0; i < numBlocks; i++) {
-        std::cout << '\n' << i + 1 << ". Block id: " << blocks[i] << '\n';
-    }
+
     std::cin.ignore();
     stream.close();
 }
@@ -952,7 +962,7 @@ void runCommand(char* commandFor, char* commandTo) {
     }
     else if (strCompare(commandFor, "biggest-blocks")) {
         computeBiggestBlocks();
-    }
+        }
     else {
         std::cout << "Command not valid!!! " << '\n';
     }
