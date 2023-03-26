@@ -154,6 +154,10 @@ void commandSeperator(const char* enteredCommand, char* commandFor, char* comman
         stringCopy(WEALTHIEST_USERS, commandFor);
         return;
     }
+    if (strCompare(enteredCommand, "biggest-blocks")) {
+        stringCopy("biggest-blocks", commandFor);
+        return;
+    }
 
     size_t index = 0;
 
@@ -195,6 +199,9 @@ short giveBlockTransactionArrIndex() {
     std::ifstream binary;
 
     binary.open("transactions.bin", std::ios::binary | std::ios::in);
+    if (!binary.is_open()) {
+        std::cout << "Open error!";
+    }
 
     binary.seekg(binary.beg);
     //TODO change type
@@ -713,8 +720,8 @@ void readTransactionInfo() {
     stream.close();
 }
 
+
 void sortUsers(int users[1024], int length) {
-    int userToCheckIndex = 0;
     int temp;
     for (int i = 0; i < length; i++) {
         for (int j = i; j < length; j++)
@@ -728,12 +735,13 @@ void sortUsers(int users[1024], int length) {
     }
 }
 
-void computeWealthiestUsers() {
 
-    //TODO OOO 
+
+void computeWealthiestUsers() {
 
     int numUsers;
     std::cout << '\n' << "Enter how big of a list of wealthiest users you want: ";
+
     std::cin >> numUsers;
     int* userWealth = new int[numUsers];
 
@@ -763,14 +771,165 @@ void computeWealthiestUsers() {
     sortUsers(users, userIndex);
 
 
-
+    //TODO in a function
     //print wealthiest users
     char userNamse[32];
     for (size_t i = 0; i < numUsers; i++) {
         getUserName(users[i], userNamse);
         std::cout << '\n' << i + 1 << ". User name: " << userNamse << ", with id: " << users[i] << ", with wealth: " << checkUserAmount(users[i]) << '\n';
     }
+    std::cin.ignore();
+    stream.close();
+}
 
+
+
+
+
+
+
+
+
+short computeBlockArrSize(int blockCounter) {
+    std::ifstream binary;
+
+    binary.open("transactions.bin", std::ios::binary | std::ios::in);
+
+    if (!binary.is_open()) {
+        std::cout << "Open error!";
+    }
+
+    Transaction transaction;
+    int blockSize = 0;
+
+
+    for (size_t i = 0; binary.read((char*)&transaction, sizeof(Transaction)) ; i++)
+    {
+        if (i == ((blockCounter - 1) * numOfTransactionInBlock) && blockCounter != 1) {
+            blockSize = 0;
+        }
+        blockSize++;
+    }
+
+    binary.close();
+    return blockSize % numOfTransactionInBlock;
+}
+
+short giveBlockTransactionArrIndex(int blockID) {
+
+    std::ifstream binary;
+
+    binary.open("blocks.bin", std::ios::binary | std::ios::in);
+
+    if (!binary.is_open()) {
+        std::cout << "Open error!";
+    }
+
+    binary.seekg(binary.beg);
+    //TODO change type
+    int blockCounter = 0;
+
+    TransactionBlock block;
+
+    while (binary.read((char*)&block, sizeof(TransactionBlock))) {
+        if (block.id == blockID) {
+            binary.close();
+            blockCounter++;
+
+            return computeBlockArrSize(blockCounter) - 1;
+        }
+        blockCounter++;
+    }
+
+    binary.close();
+
+    return -1;
+}
+
+double checkBlockAmount(int blockID) {
+
+    std::ifstream stream;
+
+    stream.open("blocks.bin", std::ios::binary);
+
+    if (!stream.is_open()) {
+        std::cout << "Opem error!!!";
+    }
+
+    TransactionBlock block;
+
+    double blockAmount = 0;
+    while (stream.read((char*)&block, sizeof(TransactionBlock))) {
+        if (block.id == blockID) {
+            //compute block size
+            for (size_t i = 0; i < giveBlockTransactionArrIndex(blockID) ; i++)
+            {
+                blockAmount += block.transactions[i].coins;
+            }
+
+        }
+    }
+    stream.close();
+    return blockAmount;
+}
+
+void sortBlocks(int blocks[1024], int length) {
+    int temp;
+    double blockAmount1;
+    double blockAmount2;
+    for (int i = 0; i < length; i++) {
+        for (int j = i; j < length; j++)
+        {
+
+            if (checkBlockAmount(blocks[j]) > checkBlockAmount(blocks[i])) {
+                temp = blocks[j];
+                blocks[j] = blocks[i];
+                blocks[i] = temp;
+            }
+        }
+    }
+}
+
+void computeBiggestBlocks() {
+    int numBlocks;
+    std::cout << '\n' << "Enter how big of a list of wealthiest users you want: ";
+
+    std::cin >> numBlocks;
+
+
+    TransactionBlock block;
+
+    std::ifstream stream;
+    stream.open("blocks.bin", std::ios::binary);
+
+    if (!stream.is_open()) {
+        std::cout << "Open error!!!";
+    }
+
+    int blockIndex = 0;
+    int blocks[1024];
+
+    while (stream.read((char*)&block, sizeof(block))) {
+        blocks[blockIndex] = block.id;
+
+        ++blockIndex;
+    }
+
+    if (numBlocks > blockIndex) {
+        std::cout << '\n' << "The blocks are only " << blockIndex << '\n';
+        numBlocks = blockIndex;
+    }
+
+    sortBlocks(blocks, blockIndex);
+
+
+    //TODO in a function
+    //print wealthiest users
+    char userNamse[32];
+    for (size_t i = 0; i < numBlocks; i++) {
+        std::cout << '\n' << i + 1 << ". Block id: " << blocks[i] << '\n';
+    }
+    std::cin.ignore();
     stream.close();
 }
 
@@ -791,6 +950,9 @@ void runCommand(char* commandFor, char* commandTo) {
     else if (strCompare(commandFor, WEALTHIEST_USERS)) {
         computeWealthiestUsers();
     }
+    else if (strCompare(commandFor, "biggest-blocks")) {
+        computeBiggestBlocks();
+    }
     else {
         std::cout << "Command not valid!!! " << '\n';
     }
@@ -800,8 +962,7 @@ void run() {
 
     char enteredCommand[64];
 
-    while (!strCompare(enteredCommand, EXIT)) {
-
+    do {
         std::cin.getline(enteredCommand, 64);
 
         char commandFor[32];
@@ -810,7 +971,7 @@ void run() {
         commandSeperator(enteredCommand, commandFor, commandTo);
         runCommand(commandFor, commandTo);
 
-    }
+    } while (!strCompare(enteredCommand, EXIT));
 }
 
 int main() {
