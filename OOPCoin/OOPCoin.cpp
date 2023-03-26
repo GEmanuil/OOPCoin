@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <cstring>
+#include <random>
 #include <chrono>
 #include <time.h>
 
@@ -10,6 +11,7 @@ const char* CREATE_USER = "create-user";
 const char* REMOVE_USER = "remove-user";
 const char* SEND_COINS = "send-coins";
 const char* VERIFY_TRANSACTIONS = "verify-transactions";
+const char* WEALTHIEST_USERS = "wealthiest-users";
 
 
 
@@ -104,27 +106,36 @@ long long secondsSince1970() {
 
 int randomSixDigitGenerator() {
 
-    int result = 0;
-    
-    //if rand() returns zero cycle it until it returns something else
-    while (result == 0) {
-        result = rand() % 10;
-    }
+    //int result = 0;
+    //
+    ////if rand() returns zero cycle it until it returns something else
+    //while (result == 0) {
+    //    result = rand() % 10;
+    //}
 
-    int var = 0;
+    //int var = 0;
 
-    for (int i = 0; i < 5; i++) {
+    //for (int i = 0; i < 5; i++) {
 
-        //time(0) + i -> because if not (without "+ i") it will generate only 111111 or 222222 or ... or 999999
+    //    //time(0) + i -> because if not (without "+ i") it will generate only 111111 or 222222 or ... or 999999
 
-        srand(time(0) + i);
-        var = rand() % 10;
+    //    srand(time(nullptr) + i);
+    //    var = rand() % 10;
 
-        result *= 10;
-        result += var;
-    }
+    //    result *= 10;
+    //    result += var;
+    //}
 
-    return result;
+
+      // Seed the random number generator with the current time
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(100000, 999999);
+    int random_number = dis(gen);
+
+    std::cout << '\n' << '\n' << "Generated random num: " << random_number << '\n' << '\n' << '\n';
+
+    return random_number;
 }
 
 void commandSeperator(const char* enteredCommand, char* commandFor, char* commandTo) {
@@ -132,10 +143,18 @@ void commandSeperator(const char* enteredCommand, char* commandFor, char* comman
     if (strCompare(enteredCommand, EXIT)) {
         return;
     }
+    if (strCompare(enteredCommand, "")) {
+        return;
+    }
     if (strCompare(enteredCommand, VERIFY_TRANSACTIONS)) {
         stringCopy(VERIFY_TRANSACTIONS, commandFor);
         return;
     }
+    if (strCompare(enteredCommand, WEALTHIEST_USERS)) {
+        stringCopy(WEALTHIEST_USERS, commandFor);
+        return;
+    }
+
     size_t index = 0;
 
     for (index; enteredCommand[index] != ' '; ++index) {
@@ -220,7 +239,7 @@ void mentionTransaction(Transaction& transaction, bool fileExists) {
 
 }
 
-TransactionBlock givePrevTransBlock(std::fstream stream) {
+TransactionBlock givePrevTransBlock(std::fstream& stream) {
     TransactionBlock result;
 
     std::streampos notChangedPosition = stream.tellg();
@@ -423,7 +442,7 @@ void createUser(const char* commandTo) {
         //binary.seekg(binary.eof());
         binary2.write((const char*)(&user), sizeof(user));
 
-        std::cout << "Createed user name from file: " << user.name << " " << "User id: " << user.id << '\n';
+        std::cout << "Created a user with a name: " << user.name << " " << " and id: " << user.id << '\n';
         createTransaction(ADMIN_ID, user.id, DEFAULT_AMOUNT_TRANSACTION);
 
 
@@ -533,9 +552,35 @@ int getUserId(const char* userName) {
     return -1;
 }
 
+void getUserName(const int ID, char* userName) {
+
+    std::ifstream stream;
+    stream.open("users.bin", std::ios::binary);
+    if (!stream.is_open()) {
+        std::cout << "File error!!!";
+    }
+
+    User user;
+    while (stream.read((char*)&user, sizeof(User))) {
+        if (user.id == ID) {
+            stringCopy(user.name, userName);
+            stream.close();
+            return;
+        }
+    }
+    std::cout << '\n' << "SMth went wrong with getting the user name!!" << '\n';
+    stream.close();
+
+    return;
+}
+
 double checkUserAmount(const char* userName) {
 
     int userID = getUserId(userName);
+
+    if (userID == 0) {
+        return 99999.9;
+    }
 
     std::ifstream stream;
     stream.open("transactions.bin", std::ios::binary);
@@ -555,6 +600,35 @@ double checkUserAmount(const char* userName) {
     }
     stream.close();
     return userAmount;
+}
+
+double checkUserAmount(const int userID) {
+
+    std::ifstream stream;
+    stream.open("transactions.bin", std::ios::binary);
+    if (!stream.is_open()) {
+        std::cout << "File error!!!";
+    }
+
+    if (userID == 0) {
+        stream.close();
+        return 99999.9;
+    }
+    else {
+        Transaction transaction;
+        double userAmount = 0;
+        while (stream.read((char*)&transaction, sizeof(Transaction))) {
+            if (transaction.receiver == userID) {
+                userAmount += transaction.coins;
+            }
+            else if (transaction.sender == userID) {
+                userAmount -= transaction.coins;
+            }
+        }
+        stream.close();
+        return userAmount;
+    }
+
 }
 
 void sendCoins(const char* sendFromTO) {
@@ -615,6 +689,91 @@ void checkTransactions() {
     binary.close();
 }
 
+bool userIdExistsInArr(int userID, int users[1024]) {
+    for (int i = 0; i < 1024; i++) {
+        if (users[i] == userID) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void readTransactionInfo() {
+    std::ifstream stream;
+    stream.open("transactions.bin", std::ios::binary);
+
+    if (!stream.is_open()) {
+        std::cout << "Open file fault";
+    }
+
+    Transaction trans;
+    while (stream.read((char*)&trans, sizeof(Transaction))) {
+        std::cout << '\n' << "Transaction sender: " << trans.sender << ". Transaction reciver: " << trans.receiver << '\n';
+    }
+    stream.close();
+}
+
+void sortUsers(int users[1024], int length) {
+    int userToCheckIndex = 0;
+    int temp;
+    for (int i = 0; i < length; i++) {
+        for (int j = i; j < length; j++)
+        {
+            if ( checkUserAmount(users[j]) > checkUserAmount(users[i]) ) {
+                temp = users[j];
+                users[j] = users[i];
+                users[i] = temp;
+            }
+        }
+    }
+}
+
+void computeWealthiestUsers() {
+
+    //TODO OOO 
+
+    int numUsers;
+    std::cout << '\n' << "Enter how big of a list of wealthiest users you want: ";
+    std::cin >> numUsers;
+    int* userWealth = new int[numUsers];
+
+
+    readTransactionInfo();
+
+
+    User user;
+
+    std::ifstream stream;
+    stream.open("users.bin", std::ios::binary);
+
+    int userIndex = 0;
+    int users[1024];
+
+    while(stream.read((char*)&user, sizeof(User))) {
+        users[userIndex] = user.id;
+
+        ++userIndex;
+    }
+
+    if (numUsers > userIndex) {
+        std::cout << '\n' << "The users are only " << userIndex << '\n';
+        numUsers = userIndex;
+    }
+
+    sortUsers(users, userIndex);
+
+
+
+    //print wealthiest users
+    char userNamse[32];
+    for (size_t i = 0; i < numUsers; i++) {
+        getUserName(users[i], userNamse);
+        std::cout << '\n' << i + 1 << ". User name: " << userNamse << ", with id: " << users[i] << ", with wealth: " << checkUserAmount(users[i]) << '\n';
+    }
+
+    stream.close();
+}
+
 void runCommand(char* commandFor, char* commandTo) {
 
     if (strCompare(commandFor, CREATE_USER)) {
@@ -628,6 +787,12 @@ void runCommand(char* commandFor, char* commandTo) {
     }
     else if (strCompare(commandFor, VERIFY_TRANSACTIONS)) {
         checkTransactions();
+    }
+    else if (strCompare(commandFor, WEALTHIEST_USERS)) {
+        computeWealthiestUsers();
+    }
+    else {
+        std::cout << "Command not valid!!! " << '\n';
     }
 }
 
