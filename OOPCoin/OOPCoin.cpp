@@ -232,7 +232,6 @@ void mentionTransaction(Transaction& transaction, bool fileExists) {
     }
 
     binary.close();
-
 }
 
 void createTransaction(const unsigned from, const unsigned to, const int amount) {
