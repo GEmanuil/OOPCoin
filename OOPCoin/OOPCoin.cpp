@@ -1,18 +1,19 @@
+
+//-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+//
+//
+//  
+//  
+//
+//-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
 #include <iostream>
 #include <fstream>
 #include <cstring>
 #include <random>
-#include <chrono>
-#include <time.h>
+#include <ctime>
 
-//commands
-const char* EXIT = "exit";
-const char* CREATE_USER = "create-user";
-const char* REMOVE_USER = "remove-user";
-const char* SEND_COINS = "send-coins";
-const char* VERIFY_TRANSACTIONS = "verify-transactions";
-const char* WEALTHIEST_USERS = "wealthiest-users";
-
+#pragma warning (disable: 4996)
 
 
 //def values
@@ -21,13 +22,17 @@ double DEFAULT_AMOUNT_TRANSACTION = 1500;
 unsigned ADMIN_ID = 0;
 const unsigned numOfTransactionInBlock = 3;
 
-using namespace std::chrono;
 
+unsigned computeHash(const unsigned char* memory, int length);
 long long secondsSince1970();
 int randomSixDigitGenerator();
+double checkUserAmount(const char* userName);
+double checkUserAmount(const int userID);
 void commandSeperator(const char* enteredCommand, char* commandFor, char* commandTo);
 bool strCompare(const char* arr1, const char* arr2);
 void stringCopy(const char* fromStr, char* toStr);
+bool checkIfUserExists(const char* userName);
+bool ifUserDeletedChecker(unsigned id);
 
 
 unsigned computeHash(const unsigned char* memory, int length) {
@@ -66,102 +71,76 @@ struct TransactionBlock {
     Transaction transactions[numOfTransactionInBlock];
 };
 
-long long secondsSince1970() {
+std::time_t secondsSince1970() {
 
-    //code from ChatGPT!!! must be changed
+    //                                                  ...!!!!!...
 
-    // get the current time as a time_point
-    auto tp = system_clock::now();
+      /* !!!vrushta vremeto v sekundi ot nachaloto na taka narecheniq "Unix epoch" koeto suvsem sluchaino se pada 01.01.1970 00:00:00 :) */
 
-    // calculate the duration between the time_point and the Unix epoch
-    auto duration = duration_cast<seconds>(tp.time_since_epoch());
 
-    return duration.count();
 
-    //v2
-    /*
-        #include <iostream>
-        #include <ctime>
+    time_t timeSince1970 = time(nullptr);
 
-        std::time_t timeSince1970() {
-            std::time_t now = std::time(nullptr); // get the current time
-            std::tm* start = std::localtime(&now); // get a time object representing the beginning of 1970 in the local timezone
-            start->tm_sec = 0;
-            start->tm_min = 0;
-            start->tm_hour = 0;
-            start->tm_mday = 1;
-            start->tm_mon = 0;
-            start->tm_year = 70;
-            std::time_t diff = std::difftime(now, std::mktime(start)); // calculate the difference between the two time objects in seconds
-            return diff;
-        }
-
-        int main() {
-            std::time_t secondsSince1970 = timeSince1970();
-            std::cout << "Seconds since 1970: " << secondsSince1970 << std::endl;
-            return 0;
-    }
-    */
+    return timeSince1970;
 }
 
 int randomSixDigitGenerator() {
 
-    //int result = 0;
-    //
-    ////if rand() returns zero cycle it until it returns something else
-    //while (result == 0) {
-    //    result = rand() % 10;
-    //}
+    int result = 0;
 
-    //int var = 0;
+    //if rand() returns zero cycle it until it returns something else
+    while (result == 0) {
+        result = rand() % 10;
+    }
 
-    //for (int i = 0; i < 5; i++) {
+    int var = 0;
 
-    //    //time(0) + i -> because if not (without "+ i") it will generate only 111111 or 222222 or ... or 999999
+    //Making sure that it'll never genrate the same number with seeding (current time - random num) 
 
-    //    srand(time(nullptr) + i);
-    //    var = rand() % 10;
+    srand(time(nullptr) - rand());
 
-    //    result *= 10;
-    //    result += var;
-    //}
+    for (int i = 0; i < 5; i++) {
 
+        var = rand() % 10;
 
-      // Seed the random number generator with the current time
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(100000, 999999);
-    int random_number = dis(gen);
+        result *= 10;
+        result += var;
+    }
 
-    std::cout << '\n' << '\n' << "Generated random num: " << random_number << '\n' << '\n' << '\n';
-
-    return random_number;
+    return result;
 }
 
 void commandSeperator(const char* enteredCommand, char* commandFor, char* commandTo) {
 
-    if (strCompare(enteredCommand, EXIT)) {
+    if (strCompare(enteredCommand, "exit")) {
+        commandFor[0] = '\0';
+        commandTo[0] = '\0';
         return;
     }
     if (strCompare(enteredCommand, "")) {
+        commandFor[0] = '\0';
+        commandTo[0] = '\0';
         return;
     }
-    if (strCompare(enteredCommand, VERIFY_TRANSACTIONS)) {
-        stringCopy(VERIFY_TRANSACTIONS, commandFor);
+    if (strCompare(enteredCommand, "verify-transactions")) {
+        stringCopy("verify-transactions", commandFor);
+
         return;
     }
-    if (strCompare(enteredCommand, WEALTHIEST_USERS)) {
-        stringCopy(WEALTHIEST_USERS, commandFor);
+    if (strCompare(enteredCommand, "wealthiest-users")) {
+        stringCopy("wealthiest-users", commandFor);
+
         return;
     }
     if (strCompare(enteredCommand, "biggest-blocks")) {
         stringCopy("biggest-blocks", commandFor);
+
         return;
     }
 
     size_t index = 0;
 
-    for (index; enteredCommand[index] != ' '; ++index) {
+    for (index; enteredCommand[index] != ' ' && enteredCommand[index] != '\0'; ++index) {
         commandFor[index] = enteredCommand[index];
     }
 
@@ -169,7 +148,7 @@ void commandSeperator(const char* enteredCommand, char* commandFor, char* comman
     ++index;
 
     size_t i;
-    for ( i = 0; enteredCommand[index] != '\0'; ++index, ++i) {
+    for (i = 0; enteredCommand[index] != '\0'; ++index, ++i) {
         commandTo[i] = enteredCommand[index];
     }
     commandTo[i] = '\0';
@@ -188,7 +167,7 @@ bool strCompare(const char* arr1, const char* arr2) {
 
 void stringCopy(const char* fromStr, char* toStr) {
     int i;
-    for ( i = 0; fromStr[i] != '\0'; i++) {
+    for (i = 0; fromStr[i] != '\0'; i++) {
         toStr[i] = fromStr[i];
     }
     toStr[i] = '\0';
@@ -204,7 +183,6 @@ short giveBlockTransactionArrIndex() {
     }
 
     binary.seekg(binary.beg);
-    //TODO change type
     int transactionCounter = 0;
 
     Transaction transaction;
@@ -241,28 +219,15 @@ void mentionTransaction(Transaction& transaction, bool fileExists) {
         std::cout << "Saved a rtansaction with a reciver id = " << transaction.receiver;
 
     }
- 
+
     binary.close();
 
 }
 
-TransactionBlock givePrevTransBlock(std::fstream& stream) {
-    TransactionBlock result;
+void createTransaction(const unsigned from, const unsigned to, const int amount) {
 
-    std::streampos notChangedPosition = stream.tellg();
-
-    stream.seekg(0, std::ios::end);
-    stream.seekg(stream.tellg() - static_cast<std::streampos>(sizeof(TransactionBlock)));
-    stream.read(reinterpret_cast<char*>(&result), sizeof(TransactionBlock));
-
-    stream.seekg(notChangedPosition);
-    return result;
-}
-
-void createTransaction(const unsigned from,const unsigned to, const int amount) {
-
-    //TODO make it ifstream whe possible and change the file to .dat
-    std::fstream binary("blocks.bin", std::ios::binary | std::ios::in | std::ios::out );
+    //TODO change the file to .dat
+    std::fstream binary("blocks.bin", std::ios::binary | std::ios::in | std::ios::out);
 
     if (!binary) {
 
@@ -275,7 +240,9 @@ void createTransaction(const unsigned from,const unsigned to, const int amount) 
             std::cout << "Cant create the file!!" << '\n';
         }
 
-        Transaction transaction{ to, from, amount, secondsSince1970() };
+        long long sec = secondsSince1970();
+
+        Transaction transaction{ to, from, amount, sec };
 
         mentionTransaction(transaction, false);
 
@@ -284,11 +251,11 @@ void createTransaction(const unsigned from,const unsigned to, const int amount) 
 
         std::cout << '\n' << "!!!!CREATED A TRANSACTION BOCK with ID: " << block.id << '\n';
 
-        block.prevBlockId = 0;
-        block.prevBlockHash = 0;
+        block.prevBlockId = block.id;
+        //block.prevBlockHash = 0;
         block.validTransactions = 0;
         block.transactions[0] = transaction;
-        
+
         binary.write((const char*)&block, sizeof(block));
 
         binary.close();
@@ -308,7 +275,9 @@ void createTransaction(const unsigned from,const unsigned to, const int amount) 
             std::cout << "Open error" << '\n';
         }
 
-        Transaction transaction{ to, from, amount, secondsSince1970() };
+        long long sec = secondsSince1970();
+
+        Transaction transaction{ to, from, amount, sec };
         TransactionBlock block;
 
         if (giveBlockTransactionArrIndex() == 0) {
@@ -319,10 +288,11 @@ void createTransaction(const unsigned from,const unsigned to, const int amount) 
             //TODO new block
             block.id = randomSixDigitGenerator();
             block.transactions[0] = transaction;
-            
+
             TransactionBlock lastBlock;
 
             binary2.seekg(0, std::ios::end);
+            //TODO static cast???
             binary2.seekg(binary2.tellg() - static_cast<std::streampos>(sizeof(TransactionBlock)));
 
             binary2.read((char*)(&lastBlock), sizeof(TransactionBlock));
@@ -376,7 +346,6 @@ void createUser(const char* commandTo) {
     std::fstream binary("users.bin", std::ios::binary | std::ios::in | std::ios::out /*| std::ios::app if you uncomment this it'll not work*/);
     //TODO chage the file to .dat !!!
 
-    //TODO if the file is not created already make a admin with id = 0
     //binary.open
 
     if (!binary) {
@@ -430,37 +399,36 @@ void createUser(const char* commandTo) {
 
         binary.close();
 
+        if (!checkIfUserExists(commandTo)) {
 
-        std::fstream binary2;
-        //TODO check if works with std::ios::in | std::ios::out
-        binary2.open("users.bin", std::ios::binary | std::ios::app | std::ios::in | std::ios::out);
-        //TODO if file broken to make it do smth OK
-        if (!binary2.is_open()) {
-            std::cout << "Open error" << '\n';
+
+            std::fstream binary2;
+            //TODO check if works with std::ios::in | std::ios::out
+            binary2.open("users.bin", std::ios::binary | std::ios::app | std::ios::in | std::ios::out);
+            //TODO if file broken to make it do smth OK
+            if (!binary2.is_open()) {
+                std::cout << "Open error" << '\n';
+            }
+
+            User user;
+
+            stringCopy(commandTo, user.name);
+
+            user.id = randomSixDigitGenerator();
+
+            binary2.write((const char*)(&user), sizeof(user));
+
+            std::cout << "Created a user with a name: " << user.name << " " << " and id: " << user.id << '\n';
+            createTransaction(ADMIN_ID, user.id, DEFAULT_AMOUNT_TRANSACTION);
+
+
+            std::cout << "Created User with a name: " << user.name << "\n" << "User id: " << user.id << '\n';
+
+            binary2.close();
         }
-
-        User user;
-
-        stringCopy(commandTo, user.name);
-
-        //TODO logic to make sure its random
-        user.id = randomSixDigitGenerator();
-
-        //binary.seekg(binary.eof());
-        binary2.write((const char*)(&user), sizeof(user));
-
-        std::cout << "Created a user with a name: " << user.name << " " << " and id: " << user.id << '\n';
-        createTransaction(ADMIN_ID, user.id, DEFAULT_AMOUNT_TRANSACTION);
-
-
-
-        //binary2.read((char*)&user, sizeof(User));
-
-        //binary2.read((char*)&user, sizeof(User));
-
-        std::cout << "Created User with a name: " << user.name << "\n" << "User id: " << user.id << '\n';
-
-        binary2.close();
+        else {
+            std::cout << '\n' << "User already exists!!!" << '\n';
+        }
     }
 
 }
@@ -479,7 +447,7 @@ void removeUser(const char* userToRemove) {
         std::cout << "YOU CAN'T REMOVE THE SYS_USER!!!" << '\n';
         return;
     }
-    if (user.id == 1) {
+    if (ifUserDeletedChecker(user.id)) {
         std::cout << "User already deleted!!!" << '\n';
         return;
     }
@@ -494,10 +462,11 @@ void removeUser(const char* userToRemove) {
     binary.seekp(binary.tellp() - static_cast<std::streampos>(sizeof(User)));
     binary.read((char*)&user, sizeof(User));
 
-    //TODO transfer all the money to admin
+    //transfer all the money to admin
+    createTransaction(user.id, 0, checkUserAmount(user.id));
 
 
-    if (user.id  == 1) {
+    if (ifUserDeletedChecker(user.id)) {
         std::cout << "Sucsessfully removed" << '\n';
     }
     else {
@@ -509,7 +478,7 @@ void removeUser(const char* userToRemove) {
 void seperateSenderFromReciever(const char* sendFromTo, char* from, char* to) {
     int i;
     int secIndex = 0;
-    for ( i = 0; sendFromTo[i] != ' '; i++) {
+    for (i = 0; sendFromTo[i] != ' '; i++) {
         from[i] = sendFromTo[i];
     }
     from[i] = '\0';
@@ -520,20 +489,23 @@ void seperateSenderFromReciever(const char* sendFromTo, char* from, char* to) {
     to[secIndex] = '\0';
 }
 
-bool checkIfUserExists(char* userName) {
+bool checkIfUserExists(const char* userName) {
     std::ifstream binary;
     binary.open("users.bin", std::ios::binary);
+
+    if (!binary.is_open()) {
+        std::cout << "OPen error";
+    }
 
     User user;
 
     while (binary.read((char*)&user, sizeof(User))) {
-        
+
         if (strCompare(user.name, userName) && user.id != 1) {
             return true;
         }
     }
 
-    std::cout << "User " << user.name << " doesn't exist" << '\n';
     binary.close();
     return false;
 }
@@ -609,6 +581,10 @@ double checkUserAmount(const char* userName) {
     return userAmount;
 }
 
+bool ifUserDeletedChecker(unsigned id) {
+    return (id == 1) ? true : false;
+}
+
 double checkUserAmount(const int userID) {
 
     std::ifstream stream;
@@ -648,9 +624,15 @@ void sendCoins(const char* sendFromTO) {
     std::cout << '\n';
 
     seperateSenderFromReciever(sendFromTO, coinsFrom, coinsTo);
-    if (!checkIfUserExists(coinsFrom) || !checkIfUserExists(coinsTo)) {
+    if (!checkIfUserExists(coinsFrom)) {
+        std::cout << "User " << coinsFrom << " doesn't exist" << '\n';
         return;
     }
+    if (!checkIfUserExists(coinsTo)) {
+        std::cout << "User " << coinsTo << " doesn't exist!!!" << '\n';
+        return;
+    }
+
 
     double senderAmount = checkUserAmount(coinsFrom);
 
@@ -660,7 +642,7 @@ void sendCoins(const char* sendFromTO) {
     }
 
     createTransaction(getUserId(coinsFrom), getUserId(coinsTo), amount);
-    
+
 }
 
 void checkTransactions() {
@@ -692,7 +674,7 @@ void checkTransactions() {
         prevBlockHash = computeHash((const unsigned char*)(&block), sizeof(block));
     }
 
-    std::cout << '\n' << "All transactions have connection!!!" << '\n';
+    std::cout << '\n' << "All transactions have connection!!!" << '\n' << '\n';
     binary.close();
 }
 
@@ -726,7 +708,7 @@ void sortUsers(int users[1024], int length) {
     for (int i = 0; i < length; i++) {
         for (int j = i; j < length; j++)
         {
-            if ( checkUserAmount(users[j]) > checkUserAmount(users[i]) ) {
+            if (checkUserAmount(users[j]) > checkUserAmount(users[i])) {
                 temp = users[j];
                 users[j] = users[i];
                 users[i] = temp;
@@ -734,8 +716,6 @@ void sortUsers(int users[1024], int length) {
         }
     }
 }
-
-
 
 void computeWealthiestUsers() {
 
@@ -757,7 +737,7 @@ void computeWealthiestUsers() {
     int userIndex = 0;
     int users[1024];
 
-    while(stream.read((char*)&user, sizeof(User))) {
+    while (stream.read((char*)&user, sizeof(User))) {
         users[userIndex] = user.id;
 
         ++userIndex;
@@ -775,20 +755,27 @@ void computeWealthiestUsers() {
     //print wealthiest users
     char userNamse[32];
     for (size_t i = 0; i < numUsers; i++) {
-        getUserName(users[i], userNamse);
-        std::cout << '\n' << i + 1 << ". User name: " << userNamse << ", with id: " << users[i] << ", with wealth: " << checkUserAmount(users[i]) << '\n';
+        if (users[i] != 1)
+        {
+            getUserName(users[i], userNamse);
+            std::cout << '\n' << i + 1 << ". User name: " << userNamse << ", with id: " << users[i] << ", with wealth: " << checkUserAmount(users[i]) << '\n';
+        }
     }
+
+    //cout the deleted users
+    User usr;
+    int countTheDeletedUsers = 0;
+    for (size_t i = 0; i < numUsers; i++) {
+        if (ifUserDeletedChecker(users[i])) {
+            countTheDeletedUsers++;
+        }
+    }
+    std::cout << '\n' << "And there are " << countTheDeletedUsers << " deleted users" << '\n' << '\n';
+
+
     std::cin.ignore();
     stream.close();
 }
-
-
-
-
-
-
-
-
 
 short computeBlockArrSize(int blockCounter) {
     std::ifstream binary;
@@ -816,8 +803,6 @@ short computeBlockArrSize(int blockCounter) {
         while (binary.read((char*)&transaction, sizeof(Transaction)) && blockSize < numOfTransactionInBlock) {
             ++blockSize;
         }
-        
-
     }
 
     binary.close();
@@ -871,7 +856,8 @@ double checkBlockAmount(int blockID) {
     while (stream.read((char*)&block, sizeof(TransactionBlock))) {
         if (block.id == blockID) {
             //compute block size
-            for (size_t i = 0; i < giveBlockTransactionArrIndex(blockID) ; i++)
+            int blockTransactionArrIndex = giveBlockTransactionArrIndex(blockID);
+            for (size_t i = 0; i < blockTransactionArrIndex; i++)
             {
                 blockAmount += block.transactions[i].coins;
             }
@@ -945,24 +931,25 @@ void computeBiggestBlocks() {
 
 void runCommand(char* commandFor, char* commandTo) {
 
-    if (strCompare(commandFor, CREATE_USER)) {
+    if (strCompare(commandFor, "create-user")) {
         createUser(commandTo);
     }
-    else if (strCompare(commandFor, REMOVE_USER)) {
+    else if (strCompare(commandFor, "remove-user")) {
         removeUser(commandTo);
     }
-    else if (strCompare(commandFor, SEND_COINS)) {
+    else if (strCompare(commandFor, "send-coins")) {
         sendCoins(commandTo);
+        std::cin.ignore();
     }
-    else if (strCompare(commandFor, VERIFY_TRANSACTIONS)) {
+    else if (strCompare(commandFor, "verify-transactions")) {
         checkTransactions();
     }
-    else if (strCompare(commandFor, WEALTHIEST_USERS)) {
+    else if (strCompare(commandFor, "wealthiest-users")) {
         computeWealthiestUsers();
     }
     else if (strCompare(commandFor, "biggest-blocks")) {
         computeBiggestBlocks();
-        }
+    }
     else {
         std::cout << "Command not valid!!! " << '\n';
     }
@@ -973,6 +960,7 @@ void run() {
     char enteredCommand[64];
 
     do {
+        std::cout << "--";
         std::cin.getline(enteredCommand, 64);
 
         char commandFor[32];
@@ -981,12 +969,14 @@ void run() {
         commandSeperator(enteredCommand, commandFor, commandTo);
         runCommand(commandFor, commandTo);
 
-    } while (!strCompare(enteredCommand, EXIT));
+    } while (!strCompare(enteredCommand, "exit"));
 }
 
 int main() {
-    
+
     run();
 
     return 0;
 }
+
+//TODO transactions coin bug
