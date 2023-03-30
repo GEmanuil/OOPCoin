@@ -137,6 +137,11 @@ void commandSeperator(const char* enteredCommand, char* commandFor, char* comman
 
         return;
     }
+    if (strCompare(enteredCommand, "help")) {
+        stringCopy("help", commandFor);
+
+        return;
+    }
 
     size_t index = 0;
 
@@ -171,6 +176,13 @@ void stringCopy(const char* fromStr, char* toStr) {
         toStr[i] = fromStr[i];
     }
     toStr[i] = '\0';
+}
+
+//useless function for now
+void rewind(std::ifstream& inputFile)
+{
+    inputFile.clear();
+    inputFile.seekg(0, std::ios::beg);
 }
 
 short giveBlockTransactionArrIndex() {
@@ -261,7 +273,6 @@ void createTransaction(const unsigned from, const unsigned to, const int amount)
     }
 
     else {
-
         if (!binary.is_open()) {
             std::cout << "Open error" << '\n';
         }
@@ -928,6 +939,28 @@ void computeBiggestBlocks() {
     stream.close();
 }
 
+void printHelp() {
+    std::cout << "Available commands:" << std::endl << std::endl;
+    std::cout << "  create-user <username> - creates a new user with the specified username" << std::endl;
+    std::cout << "  remove-user <username> - removes the user with the specified username" << std::endl;
+    std::cout << "  send-coins <sendFrom sendTo> - sends coins from a user to a user" << std::endl;
+    std::cout << "  verify-transactions - verifies that all transactions have connections through the hash's" << std::endl;
+    std::cout << "  wealthiest-users - computes and prints the wealthiest users" << std::endl;
+    std::cout << "  biggest-blocks - computes and prints the biggest blocks" << std::endl;
+    std::cout << "  help - displays this help message" << std::endl;
+    std::cout << "  exit - exits the program" << std::endl << std::endl;
+
+}
+
+void welcomeMessage() {
+
+    std::cout << "               ***WELCOME TO OOPCoin***" << std::endl << std::endl;
+
+    std::cout << "You can manipulate the people's money with these commands ->" << std::endl << std::endl;
+
+    printHelp();
+
+}
 void runCommand(char* commandFor, char* commandTo) {
 
     if (strCompare(commandFor, "create-user")) {
@@ -949,6 +982,9 @@ void runCommand(char* commandFor, char* commandTo) {
     else if (strCompare(commandFor, "biggest-blocks")) {
         computeBiggestBlocks();
     }
+    else if (strCompare(commandFor, "help")) {
+        printHelp();
+    }
     else {
         std::cout << "Command not valid!!! " << '\n';
     }
@@ -959,7 +995,7 @@ void run() {
     char enteredCommand[64];
 
     do {
-        std::cout << "--";
+        std::cout << "- ";
         std::cin.getline(enteredCommand, 64);
 
         char commandFor[32];
@@ -972,7 +1008,7 @@ void run() {
 }
 
 int main() {
-
+    welcomeMessage();
     run();
 
     return 0;
@@ -980,7 +1016,6 @@ int main() {
 
 
 //TODO razqsneniq
-//TODO help
 //TODO transactions coin bug
- //TODO static cast???
+//TODO static cast???
 //TODO change the file to .dat
