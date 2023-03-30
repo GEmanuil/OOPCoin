@@ -217,7 +217,6 @@ void mentionTransaction(Transaction& transaction, bool fileExists) {
         }
         binary.write((const char*)&transaction, sizeof(Transaction));
         std::cout << "Saved a rtansaction with a reciver id = " << transaction.receiver;
-
     }
 
     binary.close();
@@ -249,12 +248,12 @@ void createTransaction(const unsigned from, const unsigned to, const int amount)
         TransactionBlock block;
         block.id = randomSixDigitGenerator();
 
-        std::cout << '\n' << "!!!!CREATED A TRANSACTION BOCK with ID: " << block.id << '\n';
+        std::cout << '\n' << "!!!!CREATED A TRANSACTION BLOCK with ID: " << block.id << '\n';
 
         block.prevBlockId = block.id;
-        //block.prevBlockHash = 0;
         block.validTransactions = 0;
         block.transactions[0] = transaction;
+        block.validTransactions++;
 
         binary.write((const char*)&block, sizeof(block));
 
@@ -285,7 +284,6 @@ void createTransaction(const unsigned from, const unsigned to, const int amount)
 
             std::cout << "\n" << "\n" << "Write position in binary file!!!: " << binary2.tellp() << "\n" << "\n";
 
-            //TODO new block
             block.id = randomSixDigitGenerator();
             block.transactions[0] = transaction;
 
@@ -623,6 +621,11 @@ void sendCoins(const char* sendFromTO) {
     std::cin >> amount;
     std::cout << '\n';
 
+    if (amount < 0) {
+        std::cout << "Can't transafer negative values!!!" << "\n" << "\n";
+        return;
+    }
+
     seperateSenderFromReciever(sendFromTO, coinsFrom, coinsTo);
     if (!checkIfUserExists(coinsFrom)) {
         std::cout << "User " << coinsFrom << " doesn't exist" << '\n';
@@ -724,10 +727,6 @@ void computeWealthiestUsers() {
 
     std::cin >> numUsers;
     int* userWealth = new int[numUsers];
-
-
-    readTransactionInfo();
-
 
     User user;
 
@@ -979,4 +978,9 @@ int main() {
     return 0;
 }
 
+
+//TODO razqsneniq
+//TODO help
 //TODO transactions coin bug
+ //TODO static cast???
+//TODO change the file to .dat
