@@ -414,7 +414,7 @@ void createUser(const char* commandTo) {
             binary2.close();
         }
         else {
-            std::cout << '\n' << "User already exists!!!" << '\n';
+            std::cout << '\n' << "User already exists!!!" << '\n' << '\n';
         }
     }
 
@@ -1001,3 +1001,4 @@ int main() {
 //TODO transactions coin bug
 //TODO static cast???
 //TODO change the file to .dat
+//TODO removed user with no name
