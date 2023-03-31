@@ -24,7 +24,7 @@ const unsigned numOfTransactionInBlock = 3;
 
 
 unsigned computeHash(const unsigned char* memory, int length);
-long long secondsSince1970();
+std::time_t secondsSince1970();
 int randomSixDigitGenerator();
 double checkUserAmount(const char* userName);
 double checkUserAmount(const int userID);
