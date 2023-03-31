@@ -1,7 +1,7 @@
 
 //-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 //
-//
+//      
 //  
 //  
 //
@@ -219,7 +219,7 @@ void mentionTransaction(Transaction& transaction, bool fileExists) {
             std::cout << "Transaction file open error!!! ";
         }
         binary.write((const char*)&transaction, sizeof(Transaction));
-        std::cout << "\n" << "Saved a rtansaction with a reciver id = " << transaction.receiver << "\n";
+        std::cout << "\n" << "Saved a transaction with a reciver id = " << transaction.receiver << "\n";
 
     }
     else {
@@ -228,7 +228,7 @@ void mentionTransaction(Transaction& transaction, bool fileExists) {
             std::cout << "Transaction file open error!!! ";
         }
         binary.write((const char*)&transaction, sizeof(Transaction));
-        std::cout << "Saved a rtansaction with a reciver id = " << transaction.receiver;
+        std::cout << "Saved a transaction with a reciver id = " << transaction.receiver;
     }
 
     binary.close();
@@ -313,11 +313,6 @@ void createTransaction(const unsigned from, const unsigned to, const int amount)
 
             binary2.write((const char*)(&block), sizeof(block));
 
-            std::cout << "\n" << "PrevBlock HASH: " << block.prevBlockHash << '\n';
-
-
-            std::cout << "\n" << "Transactions in a block: " << block.transactions[0].receiver << " " << block.transactions[1].receiver << " " << block.transactions[2].receiver << '\n';
-
         }
         else {
 
@@ -338,9 +333,6 @@ void createTransaction(const unsigned from, const unsigned to, const int amount)
         //checking if the block correct
         binary2.seekg(binary2.tellg() - static_cast<std::streampos>(sizeof(TransactionBlock)));
         binary2.read((char*)(&block), sizeof(block));
-
-
-        std::cout << "\n" << "Transactions in a block: " << block.transactions[0].receiver << " " << block.transactions[1].receiver << " " << block.transactions[2].receiver << '\n';
 
         binary2.close();
     }
@@ -387,17 +379,7 @@ void createUser(const char* commandTo) {
         //making the default transaction from admin to created user
         createTransaction(ADMIN_ID, user.id, DEFAULT_AMOUNT_TRANSACTION);
 
-        //PRINT EVERYTHING
-
-        //binary.seekg(0, std::ios::beg);
-
-        //binary.read((char*)&user, sizeof(User));
-
-        //std::cout << "User name from file: " << user.name << "; " << "User id: " << user.id << '\n';
-
-        //binary.read((char*)&user, sizeof(User));
-
-        std::cout << "Created User with a name: " << user.name << "\n" << "User id: " << user.id << '\n';
+        std::cout << "Created User with a name: " << user.name << " " << ", user id: " << user.id << '\n';
 
         binary.close();
 
@@ -428,9 +410,6 @@ void createUser(const char* commandTo) {
 
             std::cout << "Created a user with a name: " << user.name << " " << " and id: " << user.id << '\n';
             createTransaction(ADMIN_ID, user.id, DEFAULT_AMOUNT_TRANSACTION);
-
-
-            std::cout << "Created User with a name: " << user.name << "\n" << "User id: " << user.id << '\n';
 
             binary2.close();
         }
@@ -533,7 +512,7 @@ int getUserId(const char* userName) {
             return user.id;
         }
     }
-    std::cout << '\n' << "SMth went wrong with getting the ID of a user!!" << '\n';
+    std::cout << '\n' << "Smth went wrong with getting the ID of a user!!" << '\n';
     stream.close();
 
     return -1;
@@ -984,6 +963,9 @@ void runCommand(char* commandFor, char* commandTo) {
     else if (strCompare(commandFor, "help")) {
         printHelp();
     }
+    else if (strCompare(commandFor, "exit") || strCompare(commandFor, "")) {
+        return;
+    }
     else {
         std::cout << "Command not valid!!! " << '\n';
     }
@@ -1014,6 +996,7 @@ int main() {
 }
 
 
+//TODO coins to double
 //TODO razqsneniq
 //TODO transactions coin bug
 //TODO static cast???
