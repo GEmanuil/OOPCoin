@@ -22,17 +22,40 @@ double DEFAULT_AMOUNT_TRANSACTION = 1500;
 unsigned ADMIN_ID = 0;
 const unsigned numOfTransactionInBlock = 3;
 
-
+void run();
+void runCommand(char* commandFor, char* commandTo);
+void welcomeMessage();
+void printHelp();
+void commandSeperator(const char* enteredCommand, char* commandFor, char* commandTo);
+void computeBiggestBlocks();
+void sortBlocks(int blocks[1024], int length);
+double checkBlockAmount(int blockID);
+short giveBlockTransactionArrIndex(int blockID);
 unsigned computeHash(const unsigned char* memory, int length);
 std::time_t secondsSince1970();
 int randomSixDigitGenerator();
-double checkUserAmount(const char* userName);
-double checkUserAmount(const int userID);
-void commandSeperator(const char* enteredCommand, char* commandFor, char* commandTo);
 bool strCompare(const char* arr1, const char* arr2);
 void stringCopy(const char* fromStr, char* toStr);
-bool checkIfUserExists(const char* userName);
+short computeBlockArrSize(int blockCounter);
+void computeWealthiestUsers();
+void sortUsers(int users[1024], int length);
+void readTransactionInfo();
+bool userIdExistsInArr(int userID, int users[1024]);
+void checkTransactions();
+void sendCoins(const char* sendFromTO);
+double checkUserAmount(const int userID);
 bool ifUserDeletedChecker(unsigned id);
+double checkUserAmount(const char* userName);
+void getUserName(const int ID, char* userName);
+int getUserId(const char* userName);
+bool checkIfUserExists(const char* userName);
+void seperateSenderFromReciever(const char* sendFromTo, char* from, char* to);
+void removeUser(const char* userToRemove);
+void createUser(const char* commandTo);
+void createTransaction(const unsigned from, const unsigned to, const double amount);
+short giveBlockTransactionArrIndex();
+void rewind(std::ifstream& inputFile);
+
 
 
 unsigned computeHash(const unsigned char* memory, int length) {
@@ -110,74 +133,6 @@ int randomSixDigitGenerator() {
     return result;
 }
 
-void commandSeperator(const char* enteredCommand, char* commandFor, char* commandTo) {
-
-    if (strCompare(enteredCommand, "exit")) {
-        commandFor[0] = '\0';
-        commandTo[0] = '\0';
-        return;
-    }
-    if (strCompare(enteredCommand, "")) {
-        commandFor[0] = '\0';
-        commandTo[0] = '\0';
-        return;
-    }
-    if (strCompare(enteredCommand, "verify-transactions")) {
-        stringCopy("verify-transactions", commandFor);
-
-        return;
-    }
-    if (strCompare(enteredCommand, "wealthiest-users")) {
-        stringCopy("wealthiest-users", commandFor);
-
-        return;
-    }
-    if (strCompare(enteredCommand, "biggest-blocks")) {
-        stringCopy("biggest-blocks", commandFor);
-
-        return;
-    }
-    if (strCompare(enteredCommand, "help")) {
-        stringCopy("help", commandFor);
-
-        return;
-    }
-
-    size_t index = 0;
-
-    for (index; enteredCommand[index] != ' ' && enteredCommand[index] != '\0'; ++index) {
-        commandFor[index] = enteredCommand[index];
-    }
-
-    commandFor[index] = '\0';
-    ++index;
-
-    size_t i;
-    for (i = 0; enteredCommand[index] != '\0'; ++index, ++i) {
-        commandTo[i] = enteredCommand[index];
-    }
-    commandTo[i] = '\0';
-}
-
-bool strCompare(const char* arr1, const char* arr2) {
-
-    for (int i = 0; arr1[i] != '\0' || arr2[i] != '\0'; i++) {
-
-        if (arr1[i] != arr2[i]) {
-            return false;
-        }
-    }
-    return true;
-}
-
-void stringCopy(const char* fromStr, char* toStr) {
-    int i;
-    for (i = 0; fromStr[i] != '\0'; i++) {
-        toStr[i] = fromStr[i];
-    }
-    toStr[i] = '\0';
-}
-
 //useless function for now
 void rewind(std::ifstream& inputFile)
 {
@@ -219,7 +174,7 @@ void mentionTransaction(Transaction& transaction, bool fileExists) {
             std::cout << "Transaction file open error!!! ";
         }
         binary.write((const char*)&transaction, sizeof(Transaction));
-        std::cout << "\n" << "Saved a transaction with a reciver id = " << transaction.receiver << "\n";
+        std::cout << "\n" << "Saved a transaction with a reciver id = " << transaction.receiver << "\n" << "\n";
 
     }
     else {
@@ -228,13 +183,13 @@ void mentionTransaction(Transaction& transaction, bool fileExists) {
             std::cout << "Transaction file open error!!! ";
         }
         binary.write((const char*)&transaction, sizeof(Transaction));
-        std::cout << "Saved a transaction with a reciver id = " << transaction.receiver;
+        std::cout << "\n" << "Saved a transaction with a reciver id = " << transaction.receiver << "\n" << "\n";
     }
 
     binary.close();
 }
 
-void createTransaction(const unsigned from, const unsigned to, const int amount) {
+void createTransaction(const unsigned from, const unsigned to, const double amount) {
 
     //TODO change the file to .dat
     std::fstream binary("blocks.bin", std::ios::binary | std::ios::in | std::ios::out);
@@ -300,10 +255,20 @@ void createTransaction(const unsigned from, const unsigned to, const int amount)
             TransactionBlock lastBlock;
 
             binary2.seekg(0, std::ios::end);
-            //TODO static cast???
-            binary2.seekg(binary2.tellg() - static_cast<std::streampos>(sizeof(TransactionBlock)));
+
+
+
+
+            const std::streampos fileSize = binary2.tellg();
+            // Calculate the number of structures in the file
+            const std::size_t numStructs = fileSize / sizeof(TransactionBlock);
+
+            // Move the file pointer to the last structure in the file
+            binary2.seekg((numStructs - 1) * sizeof(TransactionBlock), std::ios::beg);
 
             binary2.read((char*)(&lastBlock), sizeof(TransactionBlock));
+            std::cout << "\n" << "\n" << "Write position in binary file!!!: " << binary2.tellp() << "\n" << "\n";
+
 
             block.prevBlockHash = computeHash((const unsigned char*)(&lastBlock), sizeof(lastBlock));
 
@@ -316,23 +281,29 @@ void createTransaction(const unsigned from, const unsigned to, const int amount)
         }
         else {
 
-            binary2.seekg(binary2.tellg() - static_cast<std::streampos>(sizeof(TransactionBlock)));
-            binary2.read((char*)(&block), sizeof(block));
 
-            //std::cout << "\n" << "Need to be smth meaningfull 1: " << block.transactions[0].receiver << '\n';
+            // Calculate the number of structures in the file
+            std::size_t numStructs = binary2.tellg() / sizeof(TransactionBlock);
+
+            // Move the file pointer to the last structure in the file
+            binary2.seekg((numStructs - 1) * sizeof(TransactionBlock), std::ios::beg);
+
+
+            binary2.read((char*)(&block), sizeof(block));
 
             block.transactions[giveBlockTransactionArrIndex()] = transaction;
 
-            binary2.seekp(binary2.tellp() - static_cast<std::streampos>(sizeof(TransactionBlock)));
+
+            // Calculate the number of structures in the file
+            numStructs = binary2.tellg() / sizeof(TransactionBlock);
+
+            // Move the file pointer to the last structure in the file
+            binary2.seekg((numStructs - 1) * sizeof(TransactionBlock), std::ios::beg);
 
 
             binary2.write((char*)(&block), sizeof(block));
         }
         mentionTransaction(transaction, true);
-
-        //checking if the block correct
-        binary2.seekg(binary2.tellg() - static_cast<std::streampos>(sizeof(TransactionBlock)));
-        binary2.read((char*)(&block), sizeof(block));
 
         binary2.close();
     }
@@ -434,19 +405,23 @@ void removeUser(const char* userToRemove) {
         std::cout << "YOU CAN'T REMOVE THE SYS_USER!!!" << '\n';
         return;
     }
-    if (ifUserDeletedChecker(user.id)) {
-        std::cout << "User already deleted!!!" << '\n';
+    if (ifUserDeletedChecker(user.id) || !checkIfUserExists(userToRemove)) {
+        std::cout << "User " << userToRemove << " doesn't exist!!!" << '\n' << '\n';
         return;
     }
-    std::cout << "REMOVED User with a name: " << user.name << "\n" << "User id: " << user.id << '\n';
+    std::cout << "Removing user with a name: " << user.name << "\n" << "User id: " << user.id << '\n';
 
     user.id = 1; // = 1 => user is deleted and from now he is gonna be ignored
 
-    binary.seekg(binary.tellg() - static_cast<std::streampos>(sizeof(User)));
-    //binary.seekp(binary.tellp() - static_cast<std::streampos>(sizeof(User)));
+
+
+    // Calculate the number of structures in the file and move the file pointer to the last structure in the file
+    binary.seekg((binary.tellg() / sizeof(User) - 1) * sizeof(User), std::ios::beg);
 
     binary.write((const char*)&user, sizeof(User));
-    binary.seekp(binary.tellp() - static_cast<std::streampos>(sizeof(User)));
+
+    // Calculate the number of structures in the file and move the file pointer to the last structure in the file
+    binary.seekp((binary.tellg() / sizeof(User) - 1) * sizeof(User), std::ios::beg);
     binary.read((char*)&user, sizeof(User));
 
     //transfer all the money to admin
@@ -465,8 +440,15 @@ void removeUser(const char* userToRemove) {
 void seperateSenderFromReciever(const char* sendFromTo, char* from, char* to) {
     int i;
     int secIndex = 0;
-    for (i = 0; sendFromTo[i] != ' '; i++) {
+    for (i = 0; sendFromTo[i] != ' ' && i < 64; i++) {
         from[i] = sendFromTo[i];
+    }
+    //nothing in sendFromTo arr
+    if (i == 64) {
+        stringCopy("no_name?!", from);
+        stringCopy("no_name?!", to);
+
+        return;
     }
     from[i] = '\0';
     i++;
@@ -586,7 +568,7 @@ double checkUserAmount(const int userID) {
     }
     else {
         Transaction transaction;
-        double userAmount = 0;
+        double userAmount = 0.0;
         while (stream.read((char*)&transaction, sizeof(Transaction))) {
             if (transaction.receiver == userID) {
                 userAmount += transaction.coins;
@@ -598,12 +580,29 @@ double checkUserAmount(const int userID) {
         stream.close();
         return userAmount;
     }
-
+    return -1;
 }
 
 void sendCoins(const char* sendFromTO) {
     char coinsFrom[64];
     char coinsTo[64];
+
+    seperateSenderFromReciever(sendFromTO, coinsFrom, coinsTo);
+
+
+    if (strCompare("no_name?!", coinsFrom)) {
+        std::cout << '\n' << "You should specify the sender and the reciver like this: [send-coins <sender> <reciver>]" << '\n' << '\n';
+        return;
+    }
+    if (!checkIfUserExists(coinsFrom)) {
+        std::cout << "User " << coinsFrom << " doesn't exist" << '\n';
+        return;
+    }
+    if (!checkIfUserExists(coinsTo)) {
+        std::cout << "User " << coinsTo << " doesn't exist!!!" << '\n';
+        return;
+    }
+
 
     double amount;
     std::cout << '\n' << "Amount: ";
@@ -614,17 +613,6 @@ void sendCoins(const char* sendFromTO) {
         std::cout << "Can't transafer negative values!!!" << "\n" << "\n";
         return;
     }
-
-    seperateSenderFromReciever(sendFromTO, coinsFrom, coinsTo);
-    if (!checkIfUserExists(coinsFrom)) {
-        std::cout << "User " << coinsFrom << " doesn't exist" << '\n';
-        return;
-    }
-    if (!checkIfUserExists(coinsTo)) {
-        std::cout << "User " << coinsTo << " doesn't exist!!!" << '\n';
-        return;
-    }
-
 
     double senderAmount = checkUserAmount(coinsFrom);
 
@@ -746,7 +734,7 @@ void computeWealthiestUsers() {
         if (users[i] != 1)
         {
             getUserName(users[i], userNamse);
-            std::cout << '\n' << i + 1 << ". User name: " << userNamse << ", with id: " << users[i] << ", with wealth: " << checkUserAmount(users[i]) << '\n';
+            std::cout << '\n' << i + 1 << ". User name: " << userNamse << ", with id: " << users[i] << ", and wealth: " << checkUserAmount(users[i]) << '\n';
         }
     }
 
@@ -909,6 +897,7 @@ void computeBiggestBlocks() {
 
     sortBlocks(blocks, blockIndex);
 
+    std::cout << '\n';
 
     //TODO in a function
     //print wealthiest users
@@ -916,6 +905,76 @@ void computeBiggestBlocks() {
     std::cin.ignore();
     stream.close();
 }
+
+
+void commandSeperator(const char* enteredCommand, char* commandFor, char* commandTo) {
+
+    if (strCompare(enteredCommand, "exit")) {
+        commandFor[0] = '\0';
+        commandTo[0] = '\0';
+        return;
+    }
+    if (strCompare(enteredCommand, "")) {
+        commandFor[0] = '\0';
+        commandTo[0] = '\0';
+        return;
+    }
+    if (strCompare(enteredCommand, "verify-transactions")) {
+        stringCopy("verify-transactions", commandFor);
+
+        return;
+    }
+    if (strCompare(enteredCommand, "wealthiest-users")) {
+        stringCopy("wealthiest-users", commandFor);
+
+        return;
+    }
+    if (strCompare(enteredCommand, "biggest-blocks")) {
+        stringCopy("biggest-blocks", commandFor);
+
+        return;
+    }
+    if (strCompare(enteredCommand, "help")) {
+        stringCopy("help", commandFor);
+
+        return;
+    }
+
+    size_t index = 0;
+
+    for (index; enteredCommand[index] != ' ' && enteredCommand[index] != '\0'; ++index) {
+        commandFor[index] = enteredCommand[index];
+    }
+
+    commandFor[index] = '\0';
+    ++index;
+
+    size_t i;
+    for (i = 0; enteredCommand[index] != '\0'; ++index, ++i) {
+        commandTo[i] = enteredCommand[index];
+    }
+    commandTo[i] = '\0';
+}
+
+bool strCompare(const char* arr1, const char* arr2) {
+
+    for (int i = 0; arr1[i] != '\0' || arr2[i] != '\0'; i++) {
+
+        if (arr1[i] != arr2[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void stringCopy(const char* fromStr, char* toStr) {
+    int i;
+    for (i = 0; fromStr[i] != '\0'; i++) {
+        toStr[i] = fromStr[i];
+    }
+    toStr[i] = '\0';
+}
+
 
 void printHelp() {
     std::cout << "Available commands:" << std::endl << std::endl;
@@ -967,7 +1026,7 @@ void runCommand(char* commandFor, char* commandTo) {
         return;
     }
     else {
-        std::cout << "Command not valid!!! " << '\n';
+        std::cout << '\n' << "Command not valid!!! " << '\n' << '\n';
     }
 }
 
@@ -989,16 +1048,15 @@ void run() {
 }
 
 int main() {
+
     welcomeMessage();
     run();
 
     return 0;
 }
 
-
-//TODO coins to double
-//TODO razqsneniq
+//TODO make the code more readble 
+//TODO razqsneniq\
+//TODO reinterpret cast
 //TODO transactions coin bug
-//TODO static cast???
 //TODO change the file to .dat
-//TODO removed user with no name
