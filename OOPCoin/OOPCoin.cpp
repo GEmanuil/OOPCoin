@@ -946,11 +946,21 @@ void commandSeperator(const char* enteredCommand, char* commandFor, char* comman
         commandFor[index] = enteredCommand[index];
     }
 
+    int j = index;
+
+    if (enteredCommand[j + 1] == ' ' || enteredCommand[j] == '\0') {
+        std::cout << '\n' << "Invalid command!!!" << '\n' << '\n';
+        commandFor[0] = '\0';
+        commandTo[0] = '\0';
+        return;
+    }
+
     commandFor[index] = '\0';
     ++index;
 
     size_t i;
     for (i = 0; enteredCommand[index] != '\0'; ++index, ++i) {
+
         commandTo[i] = enteredCommand[index];
     }
     commandTo[i] = '\0';
@@ -980,7 +990,7 @@ void printHelp() {
     std::cout << "Available commands:" << std::endl << std::endl;
     std::cout << "  create-user <username> - creates a new user with the specified username" << std::endl;
     std::cout << "  remove-user <username> - removes the user with the specified username" << std::endl;
-    std::cout << "  send-coins <sendFrom sendTo> - sends coins from a user to a user" << std::endl;
+    std::cout << "  send-coins <send-from send-to> - sends coins from a user to a user" << std::endl;
     std::cout << "  verify-transactions - verifies that all transactions have connections through the hash's" << std::endl;
     std::cout << "  wealthiest-users - computes and prints the wealthiest users" << std::endl;
     std::cout << "  biggest-blocks - computes and prints the biggest blocks" << std::endl;
@@ -1026,7 +1036,7 @@ void runCommand(char* commandFor, char* commandTo) {
         return;
     }
     else {
-        std::cout << '\n' << "Command not valid!!! " << '\n' << '\n';
+        std::cout << '\n' << "Invalid command!!!" << '\n' << '\n';
     }
 }
 
