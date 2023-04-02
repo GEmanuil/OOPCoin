@@ -1,0 +1,9 @@
+
+1. User name: admin, with id: 0, and wealth: 99999.9
+
+2. User name: mama, with id: 127233, and wealth: 1500
+
+3. User name: tate, with id: 413002, and wealth: 1500
+
+And there are 0 deleted users
+

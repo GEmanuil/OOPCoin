@@ -1,8 +1,14 @@
 
 //-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 //
-//      
+//                      RAZQSNENIQ    
 //  
+//       Izbral sum da napravq dopulnitelen fail transactions.dat koito da
+//       zapazva structorite Transaction, za po lesno razrabotvane i chetene na
+//       programata. Izbral sum i podhoda da ne zapazvam danni v RAM pametta za 
+//       osigorqvane na burzodeistvieto, no cheteneto i pisaneto v fail vinagi 
+//       kogato imame nujda ot takova, za da ima po sigurno suhranenie na danni
+//       i ulesnena logika.
 //  
 //
 //-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -133,18 +139,11 @@ int randomSixDigitGenerator() {
     return result;
 }
 
-//useless function for now
-void rewind(std::ifstream& inputFile)
-{
-    inputFile.clear();
-    inputFile.seekg(0, std::ios::beg);
-}
-
 short giveBlockTransactionArrIndex() {
 
     std::ifstream binary;
 
-    binary.open("transactions.bin", std::ios::binary | std::ios::in);
+    binary.open("transactions.dat", std::ios::binary | std::ios::in);
     if (!binary.is_open()) {
         std::cout << "Open error!";
     }
@@ -169,7 +168,7 @@ void mentionTransaction(Transaction& transaction, bool fileExists) {
 
 
     if (fileExists) {
-        binary.open("transactions.bin", std::ios::binary | std::ios::app | std::ios::out);
+        binary.open("transactions.dat", std::ios::binary | std::ios::app | std::ios::out);
         if (!binary.is_open()) {
             std::cout << "Transaction file open error!!! ";
         }
@@ -178,7 +177,7 @@ void mentionTransaction(Transaction& transaction, bool fileExists) {
 
     }
     else {
-        binary.open("transactions.bin", std::ios::binary | std::ios::trunc | std::ios::out);
+        binary.open("transactions.dat", std::ios::binary | std::ios::trunc | std::ios::out);
         if (!binary.is_open()) {
             std::cout << "Transaction file open error!!! ";
         }
@@ -191,16 +190,14 @@ void mentionTransaction(Transaction& transaction, bool fileExists) {
 
 void createTransaction(const unsigned from, const unsigned to, const double amount) {
 
-    //TODO change the file to .dat
-    std::fstream binary("blocks.bin", std::ios::binary | std::ios::in | std::ios::out);
+    std::fstream binary("blocks.dat", std::ios::binary | std::ios::in | std::ios::out);
 
     if (!binary) {
 
-        std::cout << "The file does not exist. Trying to create one..." << '\n';
-        //binary.close();
+        std::cout << '\n' << "The file does not exist. Trying to create one..." << '\n';
         binary.clear();
 
-        binary.open("blocks.bin", std::ios::binary | std::ios::trunc | std::ios::out | std::ios::in);
+        binary.open("blocks.dat", std::ios::binary | std::ios::trunc | std::ios::out | std::ios::in);
         if (!binary.is_open()) {
             std::cout << "Cant create the file!!" << '\n';
         }
@@ -233,7 +230,7 @@ void createTransaction(const unsigned from, const unsigned to, const double amou
         binary.close();
 
         std::fstream binary2;
-        binary2.open("blocks.bin", std::ios::binary | std::ios::ate | std::ios::in | std::ios::out);
+        binary2.open("blocks.dat", std::ios::binary | std::ios::ate | std::ios::in | std::ios::out);
 
         if (!binary2.is_open()) {
             std::cout << "Open error" << '\n';
@@ -245,9 +242,6 @@ void createTransaction(const unsigned from, const unsigned to, const double amou
         TransactionBlock block;
 
         if (giveBlockTransactionArrIndex() == 0) {
-            //binary2.seekp(binary2.cur);
-
-            std::cout << "\n" << "\n" << "Write position in binary file!!!: " << binary2.tellp() << "\n" << "\n";
 
             block.id = randomSixDigitGenerator();
             block.transactions[0] = transaction;
@@ -255,8 +249,6 @@ void createTransaction(const unsigned from, const unsigned to, const double amou
             TransactionBlock lastBlock;
 
             binary2.seekg(0, std::ios::end);
-
-
 
 
             const std::streampos fileSize = binary2.tellg();
@@ -267,7 +259,6 @@ void createTransaction(const unsigned from, const unsigned to, const double amou
             binary2.seekg((numStructs - 1) * sizeof(TransactionBlock), std::ios::beg);
 
             binary2.read((char*)(&lastBlock), sizeof(TransactionBlock));
-            std::cout << "\n" << "\n" << "Write position in binary file!!!: " << binary2.tellp() << "\n" << "\n";
 
 
             block.prevBlockHash = computeHash((const unsigned char*)(&lastBlock), sizeof(lastBlock));
@@ -281,11 +272,9 @@ void createTransaction(const unsigned from, const unsigned to, const double amou
         }
         else {
 
-
-            // Calculate the number of structures in the file
+           
             std::size_t numStructs = binary2.tellg() / sizeof(TransactionBlock);
 
-            // Move the file pointer to the last structure in the file
             binary2.seekg((numStructs - 1) * sizeof(TransactionBlock), std::ios::beg);
 
 
@@ -294,10 +283,8 @@ void createTransaction(const unsigned from, const unsigned to, const double amou
             block.transactions[giveBlockTransactionArrIndex()] = transaction;
 
 
-            // Calculate the number of structures in the file
             numStructs = binary2.tellg() / sizeof(TransactionBlock);
 
-            // Move the file pointer to the last structure in the file
             binary2.seekg((numStructs - 1) * sizeof(TransactionBlock), std::ios::beg);
 
 
@@ -313,19 +300,14 @@ void createTransaction(const unsigned from, const unsigned to, const double amou
 
 void createUser(const char* commandTo) {
 
-    //TODO make it ifstream whe possible
-    std::fstream binary("users.bin", std::ios::binary | std::ios::in | std::ios::out /*| std::ios::app if you uncomment this it'll not work*/);
-    //TODO chage the file to .dat !!!
-
-    //binary.open
+    std::fstream binary("users.dat", std::ios::binary | std::ios::in | std::ios::out /*| std::ios::app if you uncomment this it'll not work*/);
 
     if (!binary) {
 
         std::cout << "The User file does not exist. Trying to create one..." << '\n';
-        //binary.close();
         binary.clear();
 
-        binary.open("users.bin", std::ios::binary | std::ios::trunc | std::ios::out | std::ios::in);
+        binary.open("users.dat", std::ios::binary | std::ios::trunc | std::ios::out | std::ios::in);
         if (!binary.is_open()) {
             std::cout << "Cant create the file!!" << '\n';
         }
@@ -353,7 +335,6 @@ void createUser(const char* commandTo) {
         std::cout << "Created User with a name: " << user.name << " " << ", user id: " << user.id << '\n';
 
         binary.close();
-
     }
 
     else {
@@ -365,7 +346,7 @@ void createUser(const char* commandTo) {
 
             std::fstream binary2;
             //TODO check if works with std::ios::in | std::ios::out
-            binary2.open("users.bin", std::ios::binary | std::ios::app | std::ios::in | std::ios::out);
+            binary2.open("users.dat", std::ios::binary | std::ios::app | std::ios::in | std::ios::out);
             //TODO if file broken to make it do smth OK
             if (!binary2.is_open()) {
                 std::cout << "Open error" << '\n';
@@ -392,7 +373,7 @@ void createUser(const char* commandTo) {
 }
 
 void removeUser(const char* userToRemove) {
-    std::fstream binary("users.bin", std::ios::binary | std::ios::in | std::ios::out);
+    std::fstream binary("users.dat", std::ios::binary | std::ios::in | std::ios::out);
     User user;
 
     while (binary.read((char*)&user, sizeof(User))) {
@@ -415,12 +396,10 @@ void removeUser(const char* userToRemove) {
 
 
 
-    // Calculate the number of structures in the file and move the file pointer to the last structure in the file
     binary.seekg((binary.tellg() / sizeof(User) - 1) * sizeof(User), std::ios::beg);
 
     binary.write((const char*)&user, sizeof(User));
 
-    // Calculate the number of structures in the file and move the file pointer to the last structure in the file
     binary.seekp((binary.tellg() / sizeof(User) - 1) * sizeof(User), std::ios::beg);
     binary.read((char*)&user, sizeof(User));
 
@@ -443,6 +422,7 @@ void seperateSenderFromReciever(const char* sendFromTo, char* from, char* to) {
     for (i = 0; sendFromTo[i] != ' ' && i < 64; i++) {
         from[i] = sendFromTo[i];
     }
+
     //nothing in sendFromTo arr
     if (i == 64) {
         stringCopy("no_name?!", from);
@@ -460,7 +440,7 @@ void seperateSenderFromReciever(const char* sendFromTo, char* from, char* to) {
 
 bool checkIfUserExists(const char* userName) {
     std::ifstream binary;
-    binary.open("users.bin", std::ios::binary);
+    binary.open("users.dat", std::ios::binary);
 
     if (!binary.is_open()) {
         std::cout << "OPen error";
@@ -482,7 +462,7 @@ bool checkIfUserExists(const char* userName) {
 int getUserId(const char* userName) {
 
     std::ifstream stream;
-    stream.open("users.bin", std::ios::binary);
+    stream.open("users.dat", std::ios::binary);
     if (!stream.is_open()) {
         std::cout << "File error!!!";
     }
@@ -503,7 +483,7 @@ int getUserId(const char* userName) {
 void getUserName(const int ID, char* userName) {
 
     std::ifstream stream;
-    stream.open("users.bin", std::ios::binary);
+    stream.open("users.dat", std::ios::binary);
     if (!stream.is_open()) {
         std::cout << "File error!!!";
     }
@@ -531,7 +511,7 @@ double checkUserAmount(const char* userName) {
     }
 
     std::ifstream stream;
-    stream.open("transactions.bin", std::ios::binary);
+    stream.open("transactions.dat", std::ios::binary);
     if (!stream.is_open()) {
         std::cout << "File error!!!";
     }
@@ -557,7 +537,7 @@ bool ifUserDeletedChecker(unsigned id) {
 double checkUserAmount(const int userID) {
 
     std::ifstream stream;
-    stream.open("transactions.bin", std::ios::binary);
+    stream.open("transactions.dat", std::ios::binary);
     if (!stream.is_open()) {
         std::cout << "File error!!!";
     }
@@ -628,7 +608,7 @@ void sendCoins(const char* sendFromTO) {
 void checkTransactions() {
     std::ifstream binary;
 
-    binary.open("blocks.bin");
+    binary.open("blocks.dat");
 
     if (!binary.is_open()) {
         std::cout << "Open error of blocks.bin file!!!" << '\n';
@@ -669,7 +649,7 @@ bool userIdExistsInArr(int userID, int users[1024]) {
 
 void readTransactionInfo() {
     std::ifstream stream;
-    stream.open("transactions.bin", std::ios::binary);
+    stream.open("transactions.dat", std::ios::binary);
 
     if (!stream.is_open()) {
         std::cout << "Open file fault";
@@ -697,6 +677,85 @@ void sortUsers(int users[1024], int length) {
     }
 }
 
+User getUser(int id) {
+    std::ifstream stream ("users.dat", std::ios::binary);
+
+    if (!stream.is_open()) {
+        std::cout << "Open error";
+    }
+    User user;
+    while (stream.read((char*)&user, sizeof(User))) {
+        if (user.id == id) {
+            stream.close();
+            return user;
+        }
+    }
+    std::cout << "Invalid ID";
+    stream.close();
+    return user;
+}
+
+void numbersIntoText(long long num, char* timeString) {
+    char array[10 + 1];
+    for (int i = 10 - 1; i >= 0; i--) {
+        array[i] = num % 10 + '0';
+        num /= 10;
+    }
+    array[10] = '\0';
+    std::cout << array << '\n';
+    strcpy(timeString, array);
+
+}
+
+void createFileName(char* resultString)
+{
+    long long num = secondsSince1970();
+
+    // 10(num-s in a billion) + 1('\0') = 11  
+
+    char timeString[11];
+    numbersIntoText(num, timeString);
+    strcat(resultString, timeString);
+    strcat(resultString, ".txt");
+}
+
+void printSaveWealthiestUsers(int* userIDs, int numUsers) {
+
+    char fileName[16 + 1 + 10 + 4 + 1] = "wealthiest-users_";
+
+    createFileName(fileName);
+
+    std::ofstream stream(fileName);
+
+
+
+    char userNamse[32];
+    for (size_t i = 0; i < numUsers; i++) {
+        if (userIDs[i] != 1)
+        {
+            getUserName(userIDs[i], userNamse);
+            std::cout << '\n' << i + 1 << ". User name: " << userNamse << ", with id: " << userIDs[i] << ", and wealth: " << checkUserAmount(userIDs[i]) << '\n';
+            stream << '\n' << i + 1 << ". User name: " << userNamse << ", with id: " << userIDs[i] << ", and wealth: " << checkUserAmount(userIDs[i]) << '\n';
+
+        }
+    }
+
+
+    User usr;
+    int countTheDeletedUsers = 0;
+    for (size_t i = 0; i < numUsers; i++) {
+        if (ifUserDeletedChecker(userIDs[i])) {
+            countTheDeletedUsers++;
+        }
+    }
+    std::cout << '\n' << "And there are " << countTheDeletedUsers << " deleted users" << '\n' << '\n';
+    stream << '\n' << "And there are " << countTheDeletedUsers << " deleted users" << '\n' << '\n';
+
+    std::cout << '\n' << '\n' << "Generated a file " << fileName << " ." << '\n' << '\n';
+
+    stream.close();
+}
+
 void computeWealthiestUsers() {
 
     int numUsers;
@@ -708,7 +767,7 @@ void computeWealthiestUsers() {
     User user;
 
     std::ifstream stream;
-    stream.open("users.bin", std::ios::binary);
+    stream.open("users.dat", std::ios::binary);
 
     int userIndex = 0;
     int users[1024];
@@ -726,27 +785,11 @@ void computeWealthiestUsers() {
 
     sortUsers(users, userIndex);
 
+    printSaveWealthiestUsers(users, numUsers);
 
     //TODO in a function
     //print wealthiest users
-    char userNamse[32];
-    for (size_t i = 0; i < numUsers; i++) {
-        if (users[i] != 1)
-        {
-            getUserName(users[i], userNamse);
-            std::cout << '\n' << i + 1 << ". User name: " << userNamse << ", with id: " << users[i] << ", and wealth: " << checkUserAmount(users[i]) << '\n';
-        }
-    }
 
-    //cout the deleted users
-    User usr;
-    int countTheDeletedUsers = 0;
-    for (size_t i = 0; i < numUsers; i++) {
-        if (ifUserDeletedChecker(users[i])) {
-            countTheDeletedUsers++;
-        }
-    }
-    std::cout << '\n' << "And there are " << countTheDeletedUsers << " deleted users" << '\n' << '\n';
 
 
     std::cin.ignore();
@@ -756,7 +799,7 @@ void computeWealthiestUsers() {
 short computeBlockArrSize(int blockCounter) {
     std::ifstream binary;
 
-    binary.open("transactions.bin", std::ios::binary | std::ios::in);
+    binary.open("transactions.dat", std::ios::binary | std::ios::in);
 
     if (!binary.is_open()) {
         std::cout << "Open error!";
@@ -789,7 +832,7 @@ short giveBlockTransactionArrIndex(int blockID) {
 
     std::ifstream binary;
 
-    binary.open("blocks.bin", std::ios::binary | std::ios::in);
+    binary.open("blocks.dat", std::ios::binary | std::ios::in);
 
     if (!binary.is_open()) {
         std::cout << "Open error!";
@@ -820,7 +863,7 @@ double checkBlockAmount(int blockID) {
 
     std::ifstream stream;
 
-    stream.open("blocks.bin", std::ios::binary);
+    stream.open("blocks.dat", std::ios::binary);
 
     if (!stream.is_open()) {
         std::cout << "Opem error!!!";
@@ -875,7 +918,7 @@ void computeBiggestBlocks() {
     TransactionBlock block;
 
     std::ifstream stream;
-    stream.open("blocks.bin", std::ios::binary);
+    stream.open("blocks.dat", std::ios::binary);
 
     if (!stream.is_open()) {
         std::cout << "Open error!!!";
@@ -987,7 +1030,7 @@ void stringCopy(const char* fromStr, char* toStr) {
 
 
 void printHelp() {
-    std::cout << "Available commands:" << std::endl << std::endl;
+    std::cout << std::endl << "Available commands:" << std::endl << std::endl;
     std::cout << "  create-user <username> - creates a new user with the specified username" << std::endl;
     std::cout << "  remove-user <username> - removes the user with the specified username" << std::endl;
     std::cout << "  send-coins <send-from send-to> - sends coins from a user to a user" << std::endl;
