@@ -22,21 +22,15 @@
 #pragma warning (disable: 4996)
 
 
-//def values
-const char* ADMIN = "admin";
-double DEFAULT_AMOUNT_TRANSACTION = 1500;
-unsigned ADMIN_ID = 0;
-const unsigned numOfTransactionInBlock = 3;
-
 void run();
-void runCommand(char* commandFor, char* commandTo);
+void runCommand(const char* commandFor, const char* commandTo);
 void welcomeMessage();
 void printHelp();
 void commandSeperator(const char* enteredCommand, char* commandFor, char* commandTo);
 void computeBiggestBlocks();
 void sortBlocks(int blocks[1024], int length);
 double checkBlockAmount(int blockID);
-short giveBlockTransactionArrIndex(int blockID);
+int giveBlockTransactionArrIndex(int blockID);
 unsigned computeHash(const unsigned char* memory, int length);
 std::time_t secondsSince1970();
 int randomSixDigitGenerator();
@@ -60,8 +54,6 @@ void removeUser(const char* userToRemove);
 void createUser(const char* commandTo);
 void createTransaction(const unsigned from, const unsigned to, const double amount);
 short giveBlockTransactionArrIndex();
-void rewind(std::ifstream& inputFile);
-
 
 
 unsigned computeHash(const unsigned char* memory, int length) {
@@ -97,7 +89,7 @@ struct TransactionBlock {
     unsigned prevBlockId;
     unsigned prevBlockHash;
     int validTransactions;
-    Transaction transactions[numOfTransactionInBlock];
+    Transaction transactions[16];
 };
 
 std::time_t secondsSince1970() {
@@ -159,10 +151,11 @@ short giveBlockTransactionArrIndex() {
 
     binary.close();
 
+    const unsigned numOfTransactionInBlock = 16;
     return (transactionCounter % numOfTransactionInBlock);
 }
 
-void mentionTransaction(Transaction& transaction, bool fileExists) {
+void mentionTransaction(const Transaction& transaction, const bool fileExists) {
 
     std::ofstream binary;
 
@@ -297,7 +290,6 @@ void createTransaction(const unsigned from, const unsigned to, const double amou
 
 }
 
-
 void createUser(const char* commandTo) {
 
     std::fstream binary("users.dat", std::ios::binary | std::ios::in | std::ios::out /*| std::ios::app if you uncomment this it'll not work*/);
@@ -315,12 +307,12 @@ void createUser(const char* commandTo) {
         //creating the admin user with id = 0 
         User admin;
         admin.id = 0;
-        stringCopy(ADMIN, admin.name);
+        stringCopy("admin", admin.name);
 
 
         //making him first
         binary.seekg(0, std::ios::beg);
-        binary.write((const char*)&admin, sizeof(User));
+        binary.write(reinterpret_cast<const char*>(&admin), sizeof(User));
 
 
         //creating the wanted user
@@ -330,6 +322,10 @@ void createUser(const char* commandTo) {
         binary.write((const char*)&user, sizeof(User));
 
         //making the default transaction from admin to created user
+        const double DEFAULT_AMOUNT_TRANSACTION = 1500;
+
+        const unsigned ADMIN_ID = 0;
+
         createTransaction(ADMIN_ID, user.id, DEFAULT_AMOUNT_TRANSACTION);
 
         std::cout << "Created User with a name: " << user.name << " " << ", user id: " << user.id << '\n';
@@ -345,9 +341,8 @@ void createUser(const char* commandTo) {
 
 
             std::fstream binary2;
-            //TODO check if works with std::ios::in | std::ios::out
             binary2.open("users.dat", std::ios::binary | std::ios::app | std::ios::in | std::ios::out);
-            //TODO if file broken to make it do smth OK
+
             if (!binary2.is_open()) {
                 std::cout << "Open error" << '\n';
             }
@@ -358,9 +353,12 @@ void createUser(const char* commandTo) {
 
             user.id = randomSixDigitGenerator();
 
-            binary2.write((const char*)(&user), sizeof(user));
+            binary2.write(reinterpret_cast<const char*>(&user), sizeof(user));
 
             std::cout << "Created a user with a name: " << user.name << " " << " and id: " << user.id << '\n';
+            const double DEFAULT_AMOUNT_TRANSACTION = 1500;
+
+            const unsigned ADMIN_ID = 0;
             createTransaction(ADMIN_ID, user.id, DEFAULT_AMOUNT_TRANSACTION);
 
             binary2.close();
@@ -376,7 +374,7 @@ void removeUser(const char* userToRemove) {
     std::fstream binary("users.dat", std::ios::binary | std::ios::in | std::ios::out);
     User user;
 
-    while (binary.read((char*)&user, sizeof(User))) {
+    while (binary.read(reinterpret_cast<char*>(& user), sizeof(User))) {
         if (strCompare(user.name, userToRemove)) {
             break;
         }
@@ -398,10 +396,10 @@ void removeUser(const char* userToRemove) {
 
     binary.seekg((binary.tellg() / sizeof(User) - 1) * sizeof(User), std::ios::beg);
 
-    binary.write((const char*)&user, sizeof(User));
+    binary.write(reinterpret_cast<const char*>(&user), sizeof(User));
 
     binary.seekp((binary.tellg() / sizeof(User) - 1) * sizeof(User), std::ios::beg);
-    binary.read((char*)&user, sizeof(User));
+    binary.read(reinterpret_cast<char*>(&user), sizeof(User));
 
     //transfer all the money to admin
     createTransaction(user.id, 0, checkUserAmount(user.id));
@@ -468,7 +466,7 @@ int getUserId(const char* userName) {
     }
 
     User user;
-    while (stream.read((char*)&user, sizeof(User))) {
+    while (stream.read(reinterpret_cast<char*>(&user), sizeof(User))) {
         if (strCompare(user.name, userName)) {
             stream.close();
             return user.id;
@@ -489,7 +487,7 @@ void getUserName(const int ID, char* userName) {
     }
 
     User user;
-    while (stream.read((char*)&user, sizeof(User))) {
+    while (stream.read(reinterpret_cast<char*>(&user), sizeof(User))) {
         if (user.id == ID) {
             stringCopy(user.name, userName);
             stream.close();
@@ -518,7 +516,7 @@ double checkUserAmount(const char* userName) {
 
     Transaction transaction;
     double userAmount = 0;
-    while (stream.read((char*)&transaction, sizeof(Transaction))) {
+    while (stream.read(reinterpret_cast<char*>(&transaction), sizeof(Transaction))) {
         if (transaction.receiver == userID) {
             userAmount += transaction.coins;
         }
@@ -530,7 +528,7 @@ double checkUserAmount(const char* userName) {
     return userAmount;
 }
 
-bool ifUserDeletedChecker(unsigned id) {
+bool ifUserDeletedChecker(const unsigned id) {
     return (id == 1) ? true : false;
 }
 
@@ -549,7 +547,7 @@ double checkUserAmount(const int userID) {
     else {
         Transaction transaction;
         double userAmount = 0.0;
-        while (stream.read((char*)&transaction, sizeof(Transaction))) {
+        while (stream.read(reinterpret_cast<char*>(&transaction), sizeof(Transaction))) {
             if (transaction.receiver == userID) {
                 userAmount += transaction.coins;
             }
@@ -617,12 +615,12 @@ void checkTransactions() {
     TransactionBlock block;
 
     //read the first block with no prevHassh
-    binary.read((char*)&block, sizeof(TransactionBlock));
+    binary.read(reinterpret_cast<char*>(&block), sizeof(TransactionBlock));
 
     unsigned prevBlockHash = computeHash((const unsigned char*)(&block), sizeof(block));
     unsigned hash;
 
-    while (binary.read((char*)&block, sizeof(TransactionBlock))) {
+    while (binary.read(reinterpret_cast<char*>(&block), sizeof(TransactionBlock))) {
 
         hash = block.prevBlockHash;
 
@@ -638,7 +636,7 @@ void checkTransactions() {
     binary.close();
 }
 
-bool userIdExistsInArr(int userID, int users[1024]) {
+bool userIdExistsInArr(const int userID, const int users[1024]) {
     for (int i = 0; i < 1024; i++) {
         if (users[i] == userID) {
             return true;
@@ -656,14 +654,14 @@ void readTransactionInfo() {
     }
 
     Transaction trans;
-    while (stream.read((char*)&trans, sizeof(Transaction))) {
+    while (stream.read(reinterpret_cast<char*>(&trans), sizeof(Transaction))) {
         std::cout << '\n' << "Transaction sender: " << trans.sender << ". Transaction reciver: " << trans.receiver << '\n';
     }
     stream.close();
 }
 
 
-void sortUsers(int users[1024], int length) {
+void sortUsers(int users[1024], const int length) {
     int temp;
     for (int i = 0; i < length; i++) {
         for (int j = i; j < length; j++)
@@ -677,14 +675,14 @@ void sortUsers(int users[1024], int length) {
     }
 }
 
-User getUser(int id) {
+User getUser(const int id) {
     std::ifstream stream ("users.dat", std::ios::binary);
 
     if (!stream.is_open()) {
         std::cout << "Open error";
     }
     User user;
-    while (stream.read((char*)&user, sizeof(User))) {
+    while (stream.read(reinterpret_cast<char*>(&user), sizeof(User))) {
         if (user.id == id) {
             stream.close();
             return user;
@@ -695,39 +693,31 @@ User getUser(int id) {
     return user;
 }
 
-void numbersIntoText(long long num, char* timeString) {
-    char array[10 + 1];
+void numbersIntoText(long long num, char* timeArr) {
     for (int i = 10 - 1; i >= 0; i--) {
-        array[i] = num % 10 + '0';
+        timeArr[i] = num % 10 + 48;
         num /= 10;
     }
-    array[10] = '\0';
-    std::cout << array << '\n';
-    strcpy(timeString, array);
-
+    timeArr[10] = '\0';
 }
 
-void createFileName(char* resultString)
-{
+void createFileName(char* resultArr) {
     long long num = secondsSince1970();
 
     // 10(num-s in a billion) + 1('\0') = 11  
 
-    char timeString[11];
-    numbersIntoText(num, timeString);
-    strcat(resultString, timeString);
-    strcat(resultString, ".txt");
+    char timeArr[11];
+    numbersIntoText(num, timeArr);
+    strcat(resultArr, timeArr);
+    strcat(resultArr, ".txt");
 }
 
-void printSaveWealthiestUsers(int* userIDs, int numUsers) {
+void printSaveWealthiestUsers(const int* userIDs, const int numUsers) {
 
     char fileName[16 + 1 + 10 + 4 + 1] = "wealthiest-users_";
-
     createFileName(fileName);
 
     std::ofstream stream(fileName);
-
-
 
     char userNamse[32];
     for (size_t i = 0; i < numUsers; i++) {
@@ -751,7 +741,7 @@ void printSaveWealthiestUsers(int* userIDs, int numUsers) {
     std::cout << '\n' << "And there are " << countTheDeletedUsers << " deleted users" << '\n' << '\n';
     stream << '\n' << "And there are " << countTheDeletedUsers << " deleted users" << '\n' << '\n';
 
-    std::cout << '\n' << '\n' << "Generated a file " << fileName << " ." << '\n' << '\n';
+    std::cout << '\n' << "Generated a file: " << fileName << '\n' << '\n';
 
     stream.close();
 }
@@ -772,7 +762,7 @@ void computeWealthiestUsers() {
     int userIndex = 0;
     int users[1024];
 
-    while (stream.read((char*)&user, sizeof(User))) {
+    while (stream.read(reinterpret_cast<char*>(&user), sizeof(User))) {
         users[userIndex] = user.id;
 
         ++userIndex;
@@ -787,16 +777,12 @@ void computeWealthiestUsers() {
 
     printSaveWealthiestUsers(users, numUsers);
 
-    //TODO in a function
-    //print wealthiest users
-
-
 
     std::cin.ignore();
     stream.close();
 }
 
-short computeBlockArrSize(int blockCounter) {
+short computeBlockArrSize(const int blockCounter) {
     std::ifstream binary;
 
     binary.open("transactions.dat", std::ios::binary | std::ios::in);
@@ -808,10 +794,12 @@ short computeBlockArrSize(int blockCounter) {
     Transaction transaction;
     int blockSize = 0;
 
+    const unsigned numOfTransactionInBlock = 16;
+
 
     if (blockCounter == 1)
     {
-        while (binary.read((char*)&transaction, sizeof(Transaction)) && blockSize < numOfTransactionInBlock) {
+        while (binary.read(reinterpret_cast<char*>(&transaction), sizeof(Transaction)) && blockSize < numOfTransactionInBlock) {
             ++blockSize;
         }
     }
@@ -819,7 +807,7 @@ short computeBlockArrSize(int blockCounter) {
     else {
 
         binary.seekg((blockCounter - 1) * numOfTransactionInBlock * sizeof(Transaction));
-        while (binary.read((char*)&transaction, sizeof(Transaction)) && blockSize < numOfTransactionInBlock) {
+        while (binary.read(reinterpret_cast<char*>(&transaction), sizeof(Transaction)) && blockSize < numOfTransactionInBlock) {
             ++blockSize;
         }
     }
@@ -828,7 +816,7 @@ short computeBlockArrSize(int blockCounter) {
     return blockSize;
 }
 
-short giveBlockTransactionArrIndex(int blockID) {
+int giveBlockTransactionArrIndex(const int blockID) {
 
     std::ifstream binary;
 
@@ -839,12 +827,12 @@ short giveBlockTransactionArrIndex(int blockID) {
     }
 
     binary.seekg(binary.beg);
-    //TODO change type
+
     int blockCounter = 0;
 
     TransactionBlock block;
 
-    while (binary.read((char*)&block, sizeof(TransactionBlock))) {
+    while (binary.read(reinterpret_cast<char*>(&block), sizeof(TransactionBlock))) {
         if (block.id == blockID) {
             binary.close();
             blockCounter++;
@@ -859,7 +847,7 @@ short giveBlockTransactionArrIndex(int blockID) {
     return -1;
 }
 
-double checkBlockAmount(int blockID) {
+double checkBlockAmount(const int blockID) {
 
     std::ifstream stream;
 
@@ -872,7 +860,7 @@ double checkBlockAmount(int blockID) {
     TransactionBlock block;
 
     double blockAmount = 0;
-    while (stream.read((char*)&block, sizeof(TransactionBlock))) {
+    while (stream.read(reinterpret_cast<char*>(&block), sizeof(TransactionBlock))) {
         if (block.id == blockID) {
             //compute block size
             int blockTransactionArrIndex = giveBlockTransactionArrIndex(blockID);
@@ -887,7 +875,7 @@ double checkBlockAmount(int blockID) {
     return blockAmount;
 }
 
-void sortBlocks(int blocks[1024], int length) {
+void sortBlocks(int blocks[1024], const int length) {
     int temp;
     double blockAmount1;
     double blockAmount2;
@@ -927,7 +915,7 @@ void computeBiggestBlocks() {
     int blockIndex = 0;
     int blocks[1024];
 
-    while (stream.read((char*)&block, sizeof(block))) {
+    while (stream.read(reinterpret_cast<char*>(&block), sizeof(block))) {
         blocks[blockIndex] = block.id;
 
         ++blockIndex;
@@ -941,9 +929,6 @@ void computeBiggestBlocks() {
     sortBlocks(blocks, blockIndex);
 
     std::cout << '\n';
-
-    //TODO in a function
-    //print wealthiest users
 
     std::cin.ignore();
     stream.close();
@@ -1051,7 +1036,7 @@ void welcomeMessage() {
     printHelp();
 
 }
-void runCommand(char* commandFor, char* commandTo) {
+void runCommand(const char* commandFor, const char* commandTo) {
 
     if (strCompare(commandFor, "create-user")) {
         createUser(commandTo);
@@ -1107,9 +1092,3 @@ int main() {
 
     return 0;
 }
-
-//TODO make the code more readble 
-//TODO razqsneniq\
-//TODO reinterpret cast
-//TODO transactions coin bug
-//TODO change the file to .dat
